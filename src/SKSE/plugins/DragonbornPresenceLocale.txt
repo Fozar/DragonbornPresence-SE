@@ -1,0 +1,5 @@
+;The order of localized strings is important!
+;MainMenu
+Main menu
+;EditingCharacter
+Editing character
