@@ -9,8 +9,8 @@ const char * log_path = R"(\My Games\Skyrim Special Edition\SKSE\DragonbornPrese
 
 const char * plugin_name = "DragonbornPresence";
 const UInt32 kVersionMajor = 1;
-const UInt32 kVersionMinor = 0;
-const UInt32 kVersionPatch = 5;
+const UInt32 kVersionMinor = 1;
+const UInt32 kVersionPatch = 0;
 
 static PluginHandle g_pluginHandle = kPluginHandle_Invalid;
 
@@ -49,7 +49,7 @@ bool SKSEPlugin_Query(const SKSEInterface * skse, PluginInfo * info) {
 
     return false;
   }
-  if (skse->runtimeVersion != RUNTIME_VERSION_1_5_97) {
+  if (skse->runtimeVersion != RUNTIME_VERSION_1_6_323) {
     _MESSAGE("unsupported runtime version %08X", skse->runtimeVersion);
 
     return false;
