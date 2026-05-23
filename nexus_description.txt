@@ -16,11 +16,12 @@
 [*][b]Combat[/b] — while fighting, the quest is replaced with the enemy's name, e.g. [i]Skyrim: Helgen · In combat with Alduin[/i]. Reverts to the quest when combat ends.
 [*][b]Session timer[/b] — shows how long you've been playing this session.
 [*][b]Menu states[/b] — displays [i]Main menu[/i] while on the title screen and [i]Editing character[/i] during character creation.
+[*][b]Configurable[/b] — location, quest, combat, and character info can each be toggled on or off in a JSON file.
 [/list][/font]
 
 [font=Tahoma][size=4][b]— How to install —[/b][/size][/font]
 
-[font=Tahoma][b]Mod manager (recommended):[/b] Install the archive normally. The FOMOD installer will ask you to pick a language — that's all.
+[font=Tahoma][b]Mod manager (recommended):[/b] Install the archive normally. The FOMOD installer will ask you to pick a language. The config file is installed automatically.
 
 [b]Manual:[/b] Extract the archive, copy [font=Courier New]SKSE\[/font] into your Skyrim [font=Courier New]Data\[/font] directory, then copy the locale file for your language from [font=Courier New]locales\<lang>\DragonbornPresenceLocale.json[/font] to [font=Courier New]Data\SKSE\Plugins\[/font].
 
@@ -47,6 +48,19 @@ No .esp. No plugins to enable. Just drop and play.
 [/list][/font]
 
 [font=Tahoma]You can also edit [font=Courier New]Data\SKSE\Plugins\DragonbornPresenceLocale.json[/font] at any time. The file is optional — if it is absent, English defaults are used.[/font]
+
+[font=Tahoma][size=4][b]— Configuration —[/b][/size][/font]
+
+[font=Tahoma]Edit [font=Courier New]Data\SKSE\Plugins\DragonbornPresenceConfig.json[/font] to control what appears in the presence:[/font]
+
+[font=Courier New]{
+    "show_location": true,
+    "show_quest": true,
+    "show_combat": true,
+    "show_player_info": true
+}[/font]
+
+[font=Tahoma]Set any value to [font=Courier New]false[/font] to hide that element. If the file is missing or a key is absent, the feature defaults to on.[/font]
 
 [font=Tahoma][size=4][b]— Compatibility —[/b][/size][/font]
 

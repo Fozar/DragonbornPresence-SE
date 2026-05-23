@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.3.0 — 2026-05-23
+
+Added a config file (`Data\SKSE\Plugins\DragonbornPresenceConfig.json`) to control what is shown in the presence. Each of the four elements — location, active quest, combat, and character info — can be toggled independently by setting its key to `true` or `false`. All are enabled by default. The file is installed automatically by the mod manager; manual installers will find it in the archive alongside the DLL.
+
 ## 2.2.0 — 2026-05-20
 
 FOMOD installer included — mod managers will now ask you to pick a language during installation

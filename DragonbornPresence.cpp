@@ -31,6 +31,13 @@ std::unordered_map<std::string, std::string> g_locale = {
 std::string    g_lastPosition;
 std::string    g_combatTarget;
 
+struct Config {
+    bool show_location    = true;
+    bool show_quest       = true;
+    bool show_combat      = true;
+    bool show_player_info = true;
+} g_config;
+
 static std::string SafeStr(const char* s) {
     if (!s || *s == '\0') return "";
     return IsValidUtf8(s) ? std::string(s) : Cp1251ToUtf8(s);
@@ -122,17 +129,30 @@ void RefreshPosition(const char* trigger = nullptr) {
     auto* player = RE::PlayerCharacter::GetSingleton();
     if (!player) return;
 
-    std::string position   = BuildPosition(player);
-    std::string playerInfo = BuildPlayerInfo(player);
+    std::string position;
+    if (g_config.show_location) {
+        position = BuildPosition(player);
+        if (!position.empty()) g_lastPosition = position;
+    }
 
-    const bool fallback = position.empty() && !g_lastPosition.empty();
-    if (!position.empty()) g_lastPosition = position;
-
+    const bool fallback = g_config.show_location && position.empty() && !g_lastPosition.empty();
     const std::string& display = fallback ? g_lastPosition : position;
     std::string state = display;
 
-    std::string suffix = !g_combatTarget.empty() ? g_combatTarget : BuildActiveQuest(player);
-    if (!suffix.empty()) state += " \xC2\xB7 " + suffix;  // · (U+00B7)
+    std::string suffix;
+    if (!g_combatTarget.empty() && g_config.show_combat)
+        suffix = g_combatTarget;
+    else if (g_config.show_quest)
+        suffix = BuildActiveQuest(player);
+
+    if (!suffix.empty()) {
+        if (!state.empty())
+            state += " \xC2\xB7 " + suffix;  // · (U+00B7)
+        else
+            state = suffix;
+    }
+
+    std::string playerInfo = g_config.show_player_info ? BuildPlayerInfo(player) : "";
 
     SKSE::log::info("[{}] player='{}' location='{}' suffix='{}'{}",
         trigger ? trigger : "refresh", playerInfo, display, suffix,
@@ -244,7 +264,7 @@ public:
         const RE::TESQuestStageEvent* ev,
         RE::BSTEventSource<RE::TESQuestStageEvent>*) override
     {
-        if (!ev) return RE::BSEventNotifyControl::kContinue;
+        if (!ev || !g_config.show_quest) return RE::BSEventNotifyControl::kContinue;
         if (g_state == State::Playing)
             SKSE::GetTaskInterface()->AddTask([]() { RefreshPosition("quest-stage"); });
         return RE::BSEventNotifyControl::kContinue;
@@ -257,7 +277,7 @@ public:
         const RE::TESQuestStartStopEvent* ev,
         RE::BSTEventSource<RE::TESQuestStartStopEvent>*) override
     {
-        if (!ev) return RE::BSEventNotifyControl::kContinue;
+        if (!ev || !g_config.show_quest) return RE::BSEventNotifyControl::kContinue;
         if (g_state == State::Playing)
             SKSE::GetTaskInterface()->AddTask([]() { RefreshPosition("quest-startstop"); });
         return RE::BSEventNotifyControl::kContinue;
@@ -270,7 +290,7 @@ public:
         const RE::TESCombatEvent* ev,
         RE::BSTEventSource<RE::TESCombatEvent>*) override
     {
-        if (!ev) return RE::BSEventNotifyControl::kContinue;
+        if (!ev || !g_config.show_combat) return RE::BSEventNotifyControl::kContinue;
         if (g_state != State::Playing) return RE::BSEventNotifyControl::kContinue;
 
         // TESCombatEvent fires for the NPC side too (actor=NPC, targetActor=player),
@@ -357,6 +377,26 @@ void InitDiscord() {
 }
 
 } // anonymous namespace
+
+void LoadConfig() {
+    std::ifstream file(R"(Data\SKSE\Plugins\DragonbornPresenceConfig.json)");
+    if (!file) return;
+    try {
+        auto j = nlohmann::json::parse(file);
+        auto try_bool = [&](const char* key, bool& field) {
+            if (auto it = j.find(key); it != j.end() && it->is_boolean())
+                field = it->get<bool>();
+        };
+        try_bool("show_location",    g_config.show_location);
+        try_bool("show_quest",       g_config.show_quest);
+        try_bool("show_combat",      g_config.show_combat);
+        try_bool("show_player_info", g_config.show_player_info);
+    } catch (const nlohmann::json::exception& e) {
+        SKSE::log::error("Failed to parse config JSON: {}", e.what());
+    }
+    SKSE::log::info("Config: location={} quest={} combat={} player_info={}",
+        g_config.show_location, g_config.show_quest, g_config.show_combat, g_config.show_player_info);
+}
 
 void SetLocale() {
     std::ifstream file(R"(Data\SKSE\Plugins\DragonbornPresenceLocale.json)");

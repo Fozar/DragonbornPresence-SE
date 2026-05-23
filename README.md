@@ -14,6 +14,7 @@ While you play, Discord shows your character's name, race, level, current locati
 - Combat state — shows `In combat with <enemy name>` while in combat, replacing the quest suffix
 - Session timer showing how long you've been playing
 - State-aware presence: Main Menu, Character Creation, Loading, and In-Game are all handled separately
+- Configurable — location, quest, combat, and character info can each be toggled via a JSON file
 - Localization support — English labels can be replaced via a JSON file
 - Graceful degradation if Discord is not running
 
@@ -28,11 +29,33 @@ While you play, Discord shows your character's name, race, level, current locati
 
 ## Installation
 
-**Mod manager (recommended):** Install the archive normally. The FOMOD installer will prompt you to pick a language.
+**Mod manager (recommended):** Install the archive normally. The FOMOD installer will prompt you to pick a language. The config file is installed automatically.
 
 **Manual:** Extract the archive, copy `SKSE\` into your Skyrim `Data\` directory, then copy the locale file for your language from `locales\<lang>\DragonbornPresenceLocale.json` to `Data\SKSE\Plugins\`.
 
 Launch the game through SKSE. Discord must be running before or alongside the game — if it is not running the plugin loads normally and presence is simply disabled.
+
+---
+
+## Configuration
+
+Edit `Data\SKSE\Plugins\DragonbornPresenceConfig.json` to control what appears in the presence:
+
+```json
+{
+    "show_location": true,
+    "show_quest": true,
+    "show_combat": true,
+    "show_player_info": true
+}
+```
+
+- `show_location` — current location (e.g. `Skyrim: Riverwood`)
+- `show_quest` — active quest name shown as a suffix after the location
+- `show_combat` — enemy name shown during combat, replacing the quest suffix
+- `show_player_info` — character name, race, and level shown in the details line
+
+If the file is missing or a key is absent, that feature defaults to `true`. An invalid value for a key is silently ignored and the default is kept.
 
 ---
 
