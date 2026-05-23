@@ -2,5 +2,6 @@
     "main_menu": "Menu główne",
     "editing_character": "Edycja postaci",
     "combat_fighting": "W walce z {name}",
-    "combat_no_target": "W walce"
+    "combat_no_target": "W walce",
+    "talking_to": "Rozmowa z {name}"
 }

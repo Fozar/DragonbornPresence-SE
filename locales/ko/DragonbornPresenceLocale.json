@@ -2,5 +2,6 @@
     "main_menu": "메인 메뉴",
     "editing_character": "캐릭터 편집 중",
     "combat_fighting": "{name}와 교전 중",
-    "combat_no_target": "교전 중"
+    "combat_no_target": "교전 중",
+    "talking_to": "{name}와 대화 중"
 }

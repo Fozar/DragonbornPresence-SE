@@ -27,14 +27,17 @@ std::unordered_map<std::string, std::string> g_locale = {
     {"editing_character", "Editing character"},
     {"combat_fighting",   "In combat with {name}"},
     {"combat_no_target",  "In combat"},
+    {"talking_to",        "Talking to {name}"},
 };
 std::string    g_lastPosition;
 std::string    g_combatTarget;
+std::string    g_dialogueSpeaker;
 
 struct Config {
     bool show_location    = true;
     bool show_quest       = true;
     bool show_combat      = true;
+    bool show_dialogue    = true;
     bool show_player_info = true;
 } g_config;
 
@@ -49,9 +52,8 @@ static const std::string& Locale(const std::string& key) {
     return it != g_locale.end() ? it->second : kFallback;
 }
 
-// Formats the combat string for a known enemy name.
-// If the template contains {name}, replaces it; otherwise appends " " + name (legacy fallback).
-static std::string FormatCombat(const std::string& tmpl, const std::string& name) {
+// Replaces {name} in tmpl with name; appends " " + name if no placeholder (legacy fallback).
+static std::string FormatWithName(const std::string& tmpl, const std::string& name) {
     constexpr std::string_view kPlaceholder = "{name}";
     auto pos = tmpl.find(kPlaceholder);
     if (pos == std::string::npos)
@@ -140,7 +142,9 @@ void RefreshPosition(const char* trigger = nullptr) {
     std::string state = display;
 
     std::string suffix;
-    if (!g_combatTarget.empty() && g_config.show_combat)
+    if (!g_dialogueSpeaker.empty() && g_config.show_dialogue)
+        suffix = g_dialogueSpeaker;
+    else if (!g_combatTarget.empty() && g_config.show_combat)
         suffix = g_combatTarget;
     else if (g_config.show_quest)
         suffix = BuildActiveQuest(player);
@@ -194,6 +198,7 @@ void TransitionTo(State next) {
     case State::Loading:
         SKSE::log::info("State -> Loading");
         g_combatTarget.clear();
+        g_dialogueSpeaker.clear();
         break;
     }
 }
@@ -222,6 +227,25 @@ public:
         } else if (menu == "RaceSex Menu") {
             SKSE::log::info("Menu: '{}' {}", menu.c_str(), opening ? "open" : "close");
             TransitionTo(opening ? State::EditingCharacter : State::Playing);
+        } else if (menu == "Dialogue Menu") {
+            if (opening && g_config.show_dialogue) {
+                SKSE::GetTaskInterface()->AddTask([]() {
+                    if (!g_config.show_dialogue || g_state != State::Playing) return;
+                    auto* mtm = RE::MenuTopicManager::GetSingleton();
+                    if (mtm) {
+                        if (auto ref = mtm->speaker.get()) {
+                            std::string name = SafeStr(ref->GetName());
+                            if (!name.empty())
+                                g_dialogueSpeaker = FormatWithName(Locale("talking_to"), name);
+                        }
+                    }
+                    RefreshPosition("dialogue-open");
+                });
+            } else if (!opening) {
+                g_dialogueSpeaker.clear();
+                if (g_state == State::Playing)
+                    RefreshPosition("dialogue-close");
+            }
         } else if (menu == "Journal Menu") {
             if (!opening && g_state == State::Playing)
                 RefreshPosition("journal-close");
@@ -316,7 +340,7 @@ public:
                 if (auto target = player->GetActorRuntimeData().currentCombatTarget.get()) {
                     std::string name = SafeStr(target->GetName());
                     g_combatTarget = name.empty() ? Locale("combat_no_target")
-                                                  : FormatCombat(Locale("combat_fighting"), name);
+                                                  : FormatWithName(Locale("combat_fighting"), name);
                 } else if (g_combatTarget.empty()) {
                     g_combatTarget = Locale("combat_no_target");
                 }
@@ -390,12 +414,14 @@ void LoadConfig() {
         try_bool("show_location",    g_config.show_location);
         try_bool("show_quest",       g_config.show_quest);
         try_bool("show_combat",      g_config.show_combat);
+        try_bool("show_dialogue",    g_config.show_dialogue);
         try_bool("show_player_info", g_config.show_player_info);
     } catch (const nlohmann::json::exception& e) {
         SKSE::log::error("Failed to parse config JSON: {}", e.what());
     }
-    SKSE::log::info("Config: location={} quest={} combat={} player_info={}",
-        g_config.show_location, g_config.show_quest, g_config.show_combat, g_config.show_player_info);
+    SKSE::log::info("Config: location={} quest={} combat={} dialogue={} player_info={}",
+        g_config.show_location, g_config.show_quest, g_config.show_combat,
+        g_config.show_dialogue, g_config.show_player_info);
 }
 
 void SetLocale() {

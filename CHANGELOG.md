@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.4.0 — 2026-05-23
+
+NPC dialogue is now shown in the presence. When you open a conversation the quest suffix is replaced with "Talking to <NPC name>" (e.g. `Skyrim: Whiterun · Talking to Farengar Secret-Fire`). The suffix reverts to the active quest as soon as the dialogue menu closes. Can be disabled with `"show_dialogue": false` in the config file. The locale string `talking_to` is customisable — use `{name}` as the placeholder; SOV languages can write e.g. `"{name}と会話中"`.
+
 ## 2.3.0 — 2026-05-23
 
 Added a config file (`Data\SKSE\Plugins\DragonbornPresenceConfig.json`) to control what is shown in the presence. Each of the four elements — location, active quest, combat, and character info — can be toggled independently by setting its key to `true` or `false`. All are enabled by default. The file is installed automatically by the mod manager; manual installers will find it in the archive alongside the DLL.

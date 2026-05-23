@@ -14,6 +14,7 @@
 [*][b]Character[/b] — name, race, and level, e.g. [i]Dovahkiin - Nord (42)[/i]. Updates correctly after character creation and name changes.
 [*][b]Active quest[/b] — name of your current tracked quest, shown alongside the location, e.g. [i]Skyrim: Whiterun · Bleak Falls Barrow[/i].
 [*][b]Combat[/b] — while fighting, the quest is replaced with the enemy's name, e.g. [i]Skyrim: Helgen · In combat with Alduin[/i]. Reverts to the quest when combat ends.
+[*][b]NPC dialogue[/b] — while talking to someone, shows their name, e.g. [i]Skyrim: Whiterun · Talking to Farengar Secret-Fire[/i]. Reverts when the conversation ends.
 [*][b]Session timer[/b] — shows how long you've been playing this session.
 [*][b]Menu states[/b] — displays [i]Main menu[/i] while on the title screen and [i]Editing character[/i] during character creation.
 [*][b]Configurable[/b] — location, quest, combat, and character info can each be toggled on or off in a JSON file.
@@ -57,6 +58,7 @@ No .esp. No plugins to enable. Just drop and play.
     "show_location": true,
     "show_quest": true,
     "show_combat": true,
+    "show_dialogue": true,
     "show_player_info": true
 }[/font]
 

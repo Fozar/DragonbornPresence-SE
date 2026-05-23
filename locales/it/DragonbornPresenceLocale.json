@@ -2,5 +2,6 @@
     "main_menu": "Menu principale",
     "editing_character": "Modifica personaggio",
     "combat_fighting": "In combattimento con {name}",
-    "combat_no_target": "In combattimento"
+    "combat_no_target": "In combattimento",
+    "talking_to": "In conversazione con {name}"
 }

@@ -2,5 +2,6 @@
     "main_menu": "Главное меню",
     "editing_character": "Редактирование персонажа",
     "combat_fighting": "В бою с {name}",
-    "combat_no_target": "В бою"
+    "combat_no_target": "В бою",
+    "talking_to": "Разговор с {name}"
 }
