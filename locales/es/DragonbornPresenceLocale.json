@@ -3,5 +3,8 @@
     "editing_character": "Editando personaje",
     "combat_fighting": "En combate con {name}",
     "combat_no_target": "En combate",
-    "talking_to": "Hablando con {name}"
+    "talking_to": "Hablando con {name}",
+    "crafting_smithing": "Forja",
+    "crafting_brewing": "Prepara pociones",
+    "crafting_enchanting": "Encanta"
 }

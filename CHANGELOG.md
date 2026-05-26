@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.0 — 2026-05-26
+
+Crafting activities are now shown in the presence. Opening a smithing forge, workbench, or any other crafting station shows `"Smithing"`; an alchemy lab shows `"Brewing"`; an enchanting table shows `"Enchanting"`. The suffix reverts to the active quest as soon as the crafting menu closes. Combat still takes priority over crafting if both are active simultaneously. Can be disabled with `"show_crafting": false` in the config file. The three locale strings (`crafting_smithing`, `crafting_brewing`, `crafting_enchanting`) are customisable.
+
 ## 2.4.0 — 2026-05-23
 
 NPC dialogue is now shown in the presence. When you open a conversation the quest suffix is replaced with "Talking to <NPC name>" (e.g. `Skyrim: Whiterun · Talking to Farengar Secret-Fire`). The suffix reverts to the active quest as soon as the dialogue menu closes. Can be disabled with `"show_dialogue": false` in the config file. The locale string `talking_to` is customisable — use `{name}` as the placeholder; SOV languages can write e.g. `"{name}と会話中"`.

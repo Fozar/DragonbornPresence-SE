@@ -3,5 +3,8 @@
     "editing_character": "Edycja postaci",
     "combat_fighting": "W walce z {name}",
     "combat_no_target": "W walce",
-    "talking_to": "Rozmowa z {name}"
+    "talking_to": "Rozmowa z {name}",
+    "crafting_smithing": "Kuje",
+    "crafting_brewing": "Warzy mikstury",
+    "crafting_enchanting": "Zaczarowuje"
 }

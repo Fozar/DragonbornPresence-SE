@@ -3,5 +3,8 @@
     "editing_character": "キャラクター編集中",
     "combat_fighting": "{name}と戦闘中",
     "combat_no_target": "戦闘中",
-    "talking_to": "{name}と会話中"
+    "talking_to": "{name}と会話中",
+    "crafting_smithing": "鍛冶中",
+    "crafting_brewing": "調合中",
+    "crafting_enchanting": "エンチャント中"
 }

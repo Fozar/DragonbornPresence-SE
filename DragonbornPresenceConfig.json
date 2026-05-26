@@ -3,5 +3,6 @@
     "show_quest": true,
     "show_combat": true,
     "show_dialogue": true,
+    "show_crafting": true,
     "show_player_info": true
 }

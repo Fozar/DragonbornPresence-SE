@@ -13,9 +13,10 @@ While you play, Discord shows your character's name, race, level, current locati
 - Active quest name shown alongside the location
 - Combat state — shows `In combat with <enemy name>` while in combat, replacing the quest suffix
 - NPC dialogue — shows `Talking to <NPC name>` while in conversation, replacing the combat/quest suffix
+- Crafting — shows `Smithing`, `Brewing`, or `Enchanting` while at a crafting station, replacing the quest suffix
 - Session timer showing how long you've been playing
 - State-aware presence: Main Menu, Character Creation, Loading, and In-Game are all handled separately
-- Configurable — location, quest, combat, and character info can each be toggled via a JSON file
+- Configurable — location, quest, combat, crafting, and character info can each be toggled via a JSON file
 - Localization support — English labels can be replaced via a JSON file
 - Graceful degradation if Discord is not running
 
@@ -48,6 +49,7 @@ Edit `Data\SKSE\Plugins\DragonbornPresenceConfig.json` to control what appears i
     "show_quest": true,
     "show_combat": true,
     "show_dialogue": true,
+    "show_crafting": true,
     "show_player_info": true
 }
 ```
@@ -56,6 +58,7 @@ Edit `Data\SKSE\Plugins\DragonbornPresenceConfig.json` to control what appears i
 - `show_quest` — active quest name shown as a suffix after the location
 - `show_combat` — enemy name shown during combat, replacing the quest suffix
 - `show_dialogue` — NPC name shown during conversation, replacing the combat/quest suffix
+- `show_crafting` — activity shown while at a crafting station (`Smithing`, `Brewing`, or `Enchanting`), replacing the quest suffix
 - `show_player_info` — character name, race, and level shown in the details line
 
 If the file is missing or a key is absent, that feature defaults to `true`. An invalid value for a key is silently ignored and the default is kept.
@@ -88,13 +91,19 @@ You can also edit `Data\SKSE\Plugins\DragonbornPresenceLocale.json` directly at 
     "editing_character": "Editing character",
     "combat_fighting": "In combat with {name}",
     "combat_no_target": "In combat",
-    "talking_to": "Talking to {name}"
+    "talking_to": "Talking to {name}",
+    "crafting_smithing": "Smithing",
+    "crafting_brewing": "Brewing",
+    "crafting_enchanting": "Enchanting"
 }
 ```
 
 - `combat_fighting` — shown when an enemy name is known. `{name}` is replaced with the enemy's name at runtime (e.g. `"In combat with Alduin"`). Place it anywhere in the string; SOV languages can write `"{name}と戦闘中"`.
 - `combat_no_target` — shown when in combat but no enemy name is available (rare transient state). Falls back to `"In combat"` if the key is absent.
 - `talking_to` — shown while in conversation with an NPC. `{name}` is replaced with the NPC's name (e.g. `"Talking to Farengar Secret-Fire"`). Flexible placement: `"{name}と会話中"` works for SOV languages.
+- `crafting_smithing` — shown while using a smithing, tanning, smelting, or woodchopping station. Defaults to `"Smithing"`.
+- `crafting_brewing` — shown while at an alchemy lab. Defaults to `"Brewing"`.
+- `crafting_enchanting` — shown while at an enchanting table. Defaults to `"Enchanting"`.
 
 If the file is missing or any key is absent, English defaults are used.
 

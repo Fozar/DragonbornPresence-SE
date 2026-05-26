@@ -3,5 +3,8 @@
     "editing_character": "캐릭터 편집 중",
     "combat_fighting": "{name}와 교전 중",
     "combat_no_target": "교전 중",
-    "talking_to": "{name}와 대화 중"
+    "talking_to": "{name}와 대화 중",
+    "crafting_smithing": "단조 중",
+    "crafting_brewing": "연금술 중",
+    "crafting_enchanting": "인챈트 중"
 }

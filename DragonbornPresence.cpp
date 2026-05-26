@@ -23,21 +23,26 @@ State          g_state             = State::Loading;
 discord::Core* g_core              = nullptr;
 int64_t        g_startTime         = 0;
 std::unordered_map<std::string, std::string> g_locale = {
-    {"main_menu",         "Main menu"},
-    {"editing_character", "Editing character"},
-    {"combat_fighting",   "In combat with {name}"},
-    {"combat_no_target",  "In combat"},
-    {"talking_to",        "Talking to {name}"},
+    {"main_menu",           "Main menu"},
+    {"editing_character",   "Editing character"},
+    {"combat_fighting",     "In combat with {name}"},
+    {"combat_no_target",    "In combat"},
+    {"talking_to",          "Talking to {name}"},
+    {"crafting_smithing",   "Smithing"},
+    {"crafting_brewing",    "Brewing"},
+    {"crafting_enchanting", "Enchanting"},
 };
 std::string    g_lastPosition;
 std::string    g_combatTarget;
 std::string    g_dialogueSpeaker;
+std::string    g_craftingActivity;
 
 struct Config {
     bool show_location    = true;
     bool show_quest       = true;
     bool show_combat      = true;
     bool show_dialogue    = true;
+    bool show_crafting    = true;
     bool show_player_info = true;
 } g_config;
 
@@ -146,6 +151,8 @@ void RefreshPosition(const char* trigger = nullptr) {
         suffix = g_dialogueSpeaker;
     else if (!g_combatTarget.empty() && g_config.show_combat)
         suffix = g_combatTarget;
+    else if (!g_craftingActivity.empty() && g_config.show_crafting)
+        suffix = g_craftingActivity;
     else if (g_config.show_quest)
         suffix = BuildActiveQuest(player);
 
@@ -199,6 +206,7 @@ void TransitionTo(State next) {
         SKSE::log::info("State -> Loading");
         g_combatTarget.clear();
         g_dialogueSpeaker.clear();
+        g_craftingActivity.clear();
         break;
     }
 }
@@ -249,6 +257,23 @@ public:
         } else if (menu == "Journal Menu") {
             if (!opening && g_state == State::Playing)
                 RefreshPosition("journal-close");
+        } else if (menu == "Crafting Menu" || menu == "Alchemy Menu" || menu == "Enchanting Menu") {
+            if (g_config.show_crafting) {
+                if (opening) {
+                    if (menu == "Crafting Menu")
+                        g_craftingActivity = Locale("crafting_smithing");
+                    else if (menu == "Alchemy Menu")
+                        g_craftingActivity = Locale("crafting_brewing");
+                    else
+                        g_craftingActivity = Locale("crafting_enchanting");
+                    SKSE::log::info("Menu: '{}' open -> crafting='{}'", menu.c_str(), g_craftingActivity);
+                    if (g_state == State::Playing) RefreshPosition("crafting-open");
+                } else {
+                    SKSE::log::info("Menu: '{}' close", menu.c_str());
+                    g_craftingActivity.clear();
+                    if (g_state == State::Playing) RefreshPosition("crafting-close");
+                }
+            }
         }
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -415,13 +440,14 @@ void LoadConfig() {
         try_bool("show_quest",       g_config.show_quest);
         try_bool("show_combat",      g_config.show_combat);
         try_bool("show_dialogue",    g_config.show_dialogue);
+        try_bool("show_crafting",    g_config.show_crafting);
         try_bool("show_player_info", g_config.show_player_info);
     } catch (const nlohmann::json::exception& e) {
         SKSE::log::error("Failed to parse config JSON: {}", e.what());
     }
-    SKSE::log::info("Config: location={} quest={} combat={} dialogue={} player_info={}",
+    SKSE::log::info("Config: location={} quest={} combat={} dialogue={} crafting={} player_info={}",
         g_config.show_location, g_config.show_quest, g_config.show_combat,
-        g_config.show_dialogue, g_config.show_player_info);
+        g_config.show_dialogue, g_config.show_crafting, g_config.show_player_info);
 }
 
 void SetLocale() {

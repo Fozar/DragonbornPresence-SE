@@ -3,5 +3,8 @@
     "editing_character": "编辑角色",
     "combat_fighting": "对战 {name}",
     "combat_no_target": "战斗中",
-    "talking_to": "与 {name} 交谈"
+    "talking_to": "与 {name} 交谈",
+    "crafting_smithing": "正在锻造",
+    "crafting_brewing": "正在炼金",
+    "crafting_enchanting": "正在附魔"
 }

@@ -15,9 +15,10 @@
 [*][b]Active quest[/b] — name of your current tracked quest, shown alongside the location, e.g. [i]Skyrim: Whiterun · Bleak Falls Barrow[/i].
 [*][b]Combat[/b] — while fighting, the quest is replaced with the enemy's name, e.g. [i]Skyrim: Helgen · In combat with Alduin[/i]. Reverts to the quest when combat ends.
 [*][b]NPC dialogue[/b] — while talking to someone, shows their name, e.g. [i]Skyrim: Whiterun · Talking to Farengar Secret-Fire[/i]. Reverts when the conversation ends.
+[*][b]Crafting[/b] — while at a crafting station, shows the activity: [i]Smithing[/i] (forge, workbench, tanning rack, smelter), [i]Brewing[/i] (alchemy lab), or [i]Enchanting[/i] (enchanting table). Reverts to the active quest when the menu closes.
 [*][b]Session timer[/b] — shows how long you've been playing this session.
 [*][b]Menu states[/b] — displays [i]Main menu[/i] while on the title screen and [i]Editing character[/i] during character creation.
-[*][b]Configurable[/b] — location, quest, combat, and character info can each be toggled on or off in a JSON file.
+[*][b]Configurable[/b] — location, quest, combat, crafting, and character info can each be toggled on or off in a JSON file.
 [/list][/font]
 
 [font=Tahoma][size=4][b]— How to install —[/b][/size][/font]
@@ -59,6 +60,7 @@ No .esp. No plugins to enable. Just drop and play.
     "show_quest": true,
     "show_combat": true,
     "show_dialogue": true,
+    "show_crafting": true,
     "show_player_info": true
 }[/font]
 

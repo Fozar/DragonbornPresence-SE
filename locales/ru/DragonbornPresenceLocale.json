@@ -3,5 +3,8 @@
     "editing_character": "Редактирование персонажа",
     "combat_fighting": "В бою с {name}",
     "combat_no_target": "В бою",
-    "talking_to": "Разговор с {name}"
+    "talking_to": "Разговор с {name}",
+    "crafting_smithing": "Кует",
+    "crafting_brewing": "Варит зелья",
+    "crafting_enchanting": "Зачаровывает"
 }
