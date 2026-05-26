@@ -6,5 +6,6 @@
     "talking_to": "En conversation avec {name}",
     "crafting_smithing": "Forge",
     "crafting_brewing": "Prépare des potions",
-    "crafting_enchanting": "Enchante"
+    "crafting_enchanting": "Enchante",
+    "crafting_other": "Fabrique"
 }

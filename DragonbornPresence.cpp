@@ -31,6 +31,7 @@ std::unordered_map<std::string, std::string> g_locale = {
     {"crafting_smithing",   "Smithing"},
     {"crafting_brewing",    "Brewing"},
     {"crafting_enchanting", "Enchanting"},
+    {"crafting_other",    "Crafting"},
 };
 std::string    g_lastPosition;
 std::string    g_combatTarget;
@@ -257,19 +258,55 @@ public:
         } else if (menu == "Journal Menu") {
             if (!opening && g_state == State::Playing)
                 RefreshPosition("journal-close");
-        } else if (menu == "Crafting Menu" || menu == "Alchemy Menu" || menu == "Enchanting Menu") {
+        } else if (menu == "Crafting Menu") {
             if (g_config.show_crafting) {
                 if (opening) {
-                    if (menu == "Crafting Menu")
-                        g_craftingActivity = Locale("crafting_smithing");
-                    else if (menu == "Alchemy Menu")
-                        g_craftingActivity = Locale("crafting_brewing");
-                    else
-                        g_craftingActivity = Locale("crafting_enchanting");
-                    SKSE::log::info("Menu: '{}' open -> crafting='{}'", menu.c_str(), g_craftingActivity);
-                    if (g_state == State::Playing) RefreshPosition("crafting-open");
+                    // subMenu and furniture are set after the open event — defer one frame.
+                    SKSE::GetTaskInterface()->AddTask([]() {
+                        if (!g_config.show_crafting || g_state != State::Playing) return;
+                        std::string activity = Locale("crafting_smithing");
+                        if (auto* ui = RE::UI::GetSingleton()) {
+                            if (auto gptr = ui->GetMenu<RE::CraftingMenu>()) {
+                                auto* cm   = static_cast<RE::CraftingMenu*>(gptr.get());
+                                auto* sub  = cm->GetCraftingSubMenu();
+                                // sub->furniture can be a TESObjectREFR* (SmithingMenu) or a
+                                // TESFurniture* (AlchemyMenu, EnchantConstructMenu) depending on
+                                // the subclass. Check the actual form type to handle both cases.
+                                RE::TESFurniture* furn = nullptr;
+                                if (sub && sub->furniture) {
+                                    auto* form = reinterpret_cast<RE::TESForm*>(sub->furniture);
+                                    if (form->GetFormType() == RE::FormType::Reference) {
+                                        auto* base = static_cast<RE::TESObjectREFR*>(form)->GetBaseObject();
+                                        furn = base ? base->As<RE::TESFurniture>() : nullptr;
+                                    } else {
+                                        furn = form->As<RE::TESFurniture>();
+                                    }
+                                }
+                                SKSE::log::info("Crafting: sub={} furn={} benchType={}",
+                                    (void*)sub, (void*)furn,
+                                    static_cast<int>(furn ? furn->workBenchData.benchType.get() : RE::TESFurniture::WorkBenchData::BenchType::kNone));
+                                if (furn) {
+                                    using BT = RE::TESFurniture::WorkBenchData::BenchType;
+                                    switch (furn->workBenchData.benchType.get()) {
+                                    case BT::kAlchemy:
+                                    case BT::kAlchemyExperiment:
+                                        activity = Locale("crafting_brewing");    break;
+                                    case BT::kEnchanting:
+                                    case BT::kEnchantingExperiment:
+                                        activity = Locale("crafting_enchanting"); break;
+                                    case BT::kCreateObject:
+                                        activity = Locale("crafting_other");      break;
+                                    default: break;  // kSmithingWeapon, kSmithingArmor
+                                    }
+                                }
+                            }
+                        }
+                        g_craftingActivity = activity;
+                        SKSE::log::info("Menu: 'Crafting Menu' open -> crafting='{}'", g_craftingActivity);
+                        RefreshPosition("crafting-open");
+                    });
                 } else {
-                    SKSE::log::info("Menu: '{}' close", menu.c_str());
+                    SKSE::log::info("Menu: 'Crafting Menu' close");
                     g_craftingActivity.clear();
                     if (g_state == State::Playing) RefreshPosition("crafting-close");
                 }

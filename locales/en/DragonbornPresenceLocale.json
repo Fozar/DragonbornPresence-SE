@@ -6,5 +6,6 @@
     "talking_to": "Talking to {name}",
     "crafting_smithing": "Smithing",
     "crafting_brewing": "Brewing",
-    "crafting_enchanting": "Enchanting"
+    "crafting_enchanting": "Enchanting",
+    "crafting_other": "Crafting"
 }

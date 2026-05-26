@@ -6,5 +6,6 @@
     "talking_to": "{name}と会話中",
     "crafting_smithing": "鍛冶中",
     "crafting_brewing": "調合中",
-    "crafting_enchanting": "エンチャント中"
+    "crafting_enchanting": "エンチャント中",
+    "crafting_other": "製作中"
 }

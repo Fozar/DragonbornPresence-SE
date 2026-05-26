@@ -94,7 +94,8 @@ You can also edit `Data\SKSE\Plugins\DragonbornPresenceLocale.json` directly at 
     "talking_to": "Talking to {name}",
     "crafting_smithing": "Smithing",
     "crafting_brewing": "Brewing",
-    "crafting_enchanting": "Enchanting"
+    "crafting_enchanting": "Enchanting",
+    "crafting_other": "Crafting"
 }
 ```
 
@@ -104,6 +105,7 @@ You can also edit `Data\SKSE\Plugins\DragonbornPresenceLocale.json` directly at 
 - `crafting_smithing` — shown while using a smithing, tanning, smelting, or woodchopping station. Defaults to `"Smithing"`.
 - `crafting_brewing` — shown while at an alchemy lab. Defaults to `"Brewing"`.
 - `crafting_enchanting` — shown while at an enchanting table. Defaults to `"Enchanting"`.
+- `crafting_other` — shown for any other recipe station (cooking pots, Hearthfire building tables, etc.). Defaults to `"Crafting"`.
 
 If the file is missing or any key is absent, English defaults are used.
 

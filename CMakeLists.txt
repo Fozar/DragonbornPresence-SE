@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.28)
-project(DragonbornPresence VERSION 2.5.0 LANGUAGES CXX)
+project(DragonbornPresence VERSION 2.5.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -120,7 +120,14 @@ set(_pkg_plugins "${CMAKE_CURRENT_BINARY_DIR}/_package/SKSE/Plugins")
 file(MAKE_DIRECTORY "${_pkg_plugins}")
 
 # Copy FOMOD installer, locale files, and default config into the package (configure time)
-file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/fomod"   DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/_package")
+# info.xml is templated so the version stays in sync with project(VERSION …)
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/fomod/ModuleConfig.xml"
+     DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/_package/fomod")
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/fomod/info.xml.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/_package/fomod/info.xml"
+    @ONLY
+)
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/locales" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/_package")
 file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/DragonbornPresenceConfig.json" DESTINATION "${_pkg_plugins}")
 

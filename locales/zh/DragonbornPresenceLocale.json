@@ -6,5 +6,6 @@
     "talking_to": "与 {name} 交谈",
     "crafting_smithing": "正在锻造",
     "crafting_brewing": "正在炼金",
-    "crafting_enchanting": "正在附魔"
+    "crafting_enchanting": "正在附魔",
+    "crafting_other": "正在制作"
 }

@@ -6,5 +6,6 @@
     "talking_to": "Разговор с {name}",
     "crafting_smithing": "Кует",
     "crafting_brewing": "Варит зелья",
-    "crafting_enchanting": "Зачаровывает"
+    "crafting_enchanting": "Зачаровывает",
+    "crafting_other": "Создает"
 }

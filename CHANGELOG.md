@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.1 — 2026-05-26
+
+Fixed crafting detection: all stations fire the same `"Crafting Menu"` event; the type is now determined by inspecting the active `CraftingSubMenu` subclass at runtime. Alchemy labs now correctly show `"Brewing"`, enchanting tables show `"Enchanting"`, cooking pots and other recipe stations show `"Crafting"` (locale key `crafting_other`). Added locale key `crafting_other` for the `ConstructibleObjectMenu` type (cooking, Hearthfire building, etc.).
+
 ## 2.5.0 — 2026-05-26
 
 Crafting activities are now shown in the presence. Opening a smithing forge, workbench, or any other crafting station shows `"Smithing"`; an alchemy lab shows `"Brewing"`; an enchanting table shows `"Enchanting"`. The suffix reverts to the active quest as soon as the crafting menu closes. Combat still takes priority over crafting if both are active simultaneously. Can be disabled with `"show_crafting": false` in the config file. The three locale strings (`crafting_smithing`, `crafting_brewing`, `crafting_enchanting`) are customisable.
