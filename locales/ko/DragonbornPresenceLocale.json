@@ -7,5 +7,20 @@
     "crafting_smithing": "단조 중",
     "crafting_brewing": "연금술 중",
     "crafting_enchanting": "인챈트 중",
-    "crafting_other": "제작 중"
+    "crafting_other": "제작 중",
+    "reading": "{name} 읽는 중",
+    "trading": "{name}와 거래 중",
+    "pickpocketing": "{name} 소매치기 중",
+    "lockpicking": "자물쇠 여는 중",
+    "training": "훈련 중",
+    "waiting": "대기 중",
+    "sleeping": "수면 중",
+    "dead": "사망",
+    "sneaking": "은신 중",
+    "swimming": "수영 중",
+    "riding": "{name} 타는 중",
+    "riding_no_name": "말 타는 중",
+    "wanted": "현상금: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }

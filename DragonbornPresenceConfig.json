@@ -4,5 +4,11 @@
     "show_combat": true,
     "show_dialogue": true,
     "show_crafting": true,
-    "show_player_info": true
+    "show_player_info": true,
+    "show_menus": true,
+    "show_movement": true,
+    "show_time": true,
+    "show_weather": true,
+    "show_bounty": true,
+    "show_death": true
 }

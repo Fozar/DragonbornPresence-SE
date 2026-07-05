@@ -7,5 +7,20 @@
     "crafting_smithing": "Kuje",
     "crafting_brewing": "Warzy mikstury",
     "crafting_enchanting": "Zaczarowuje",
-    "crafting_other": "Wytwarza"
+    "crafting_other": "Wytwarza",
+    "reading": "Czyta {name}",
+    "trading": "Handluje z {name}",
+    "pickpocketing": "Okrada {name}",
+    "lockpicking": "Otwiera zamek",
+    "training": "Trenuje",
+    "waiting": "Czeka",
+    "sleeping": "Śpi",
+    "dead": "Nie żyje",
+    "sneaking": "Skrada się",
+    "swimming": "Płynie",
+    "riding": "Jedzie na {name}",
+    "riding_no_name": "Konno",
+    "wanted": "List gończy: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }

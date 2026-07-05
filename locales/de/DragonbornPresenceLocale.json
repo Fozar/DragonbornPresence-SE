@@ -7,5 +7,20 @@
     "crafting_smithing": "Schmiedet",
     "crafting_brewing": "Braut Tränke",
     "crafting_enchanting": "Verzaubert",
-    "crafting_other": "Fertigt"
+    "crafting_other": "Fertigt",
+    "reading": "Liest {name}",
+    "trading": "Handelt mit {name}",
+    "pickpocketing": "Bestiehlt {name}",
+    "lockpicking": "Knackt ein Schloss",
+    "training": "Trainiert",
+    "waiting": "Wartet",
+    "sleeping": "Schläft",
+    "dead": "Tot",
+    "sneaking": "Schleicht",
+    "swimming": "Schwimmt",
+    "riding": "Reitet auf {name}",
+    "riding_no_name": "Zu Pferd",
+    "wanted": "Gesucht: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }

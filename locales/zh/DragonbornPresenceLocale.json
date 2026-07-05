@@ -7,5 +7,20 @@
     "crafting_smithing": "正在锻造",
     "crafting_brewing": "正在炼金",
     "crafting_enchanting": "正在附魔",
-    "crafting_other": "正在制作"
+    "crafting_other": "正在制作",
+    "reading": "正在阅读《{name}》",
+    "trading": "正在与 {name} 交易",
+    "pickpocketing": "正在扒窃 {name}",
+    "lockpicking": "正在撬锁",
+    "training": "正在训练",
+    "waiting": "正在等待",
+    "sleeping": "正在睡觉",
+    "dead": "已死亡",
+    "sneaking": "潜行中",
+    "swimming": "游泳中",
+    "riding": "正在骑乘 {name}",
+    "riding_no_name": "骑马中",
+    "wanted": "悬赏: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }

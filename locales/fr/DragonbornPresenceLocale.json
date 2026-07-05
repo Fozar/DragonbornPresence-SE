@@ -7,5 +7,20 @@
     "crafting_smithing": "Forge",
     "crafting_brewing": "Prépare des potions",
     "crafting_enchanting": "Enchante",
-    "crafting_other": "Fabrique"
+    "crafting_other": "Fabrique",
+    "reading": "Lit {name}",
+    "trading": "Commerce avec {name}",
+    "pickpocketing": "Fait les poches de {name}",
+    "lockpicking": "Crochète une serrure",
+    "training": "S'entraîne",
+    "waiting": "Attend",
+    "sleeping": "Dort",
+    "dead": "Mort",
+    "sneaking": "Furtif",
+    "swimming": "Nage",
+    "riding": "Chevauche {name}",
+    "riding_no_name": "À cheval",
+    "wanted": "Recherché : {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }

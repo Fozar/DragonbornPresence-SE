@@ -7,5 +7,20 @@
     "crafting_smithing": "Forjando",
     "crafting_brewing": "Preparando poções",
     "crafting_enchanting": "Encantando",
-    "crafting_other": "Fabricando"
+    "crafting_other": "Fabricando",
+    "reading": "Lendo {name}",
+    "trading": "Negociando com {name}",
+    "pickpocketing": "Furtando {name}",
+    "lockpicking": "Abrindo uma fechadura",
+    "training": "Treinando",
+    "waiting": "Esperando",
+    "sleeping": "Dormindo",
+    "dead": "Morto",
+    "sneaking": "Furtivo",
+    "swimming": "Nadando",
+    "riding": "Montando {name}",
+    "riding_no_name": "A cavalo",
+    "wanted": "Procurado: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }

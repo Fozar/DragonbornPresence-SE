@@ -7,5 +7,20 @@
     "crafting_smithing": "Forja",
     "crafting_brewing": "Prepara pociones",
     "crafting_enchanting": "Encanta",
-    "crafting_other": "Fabrica"
+    "crafting_other": "Fabrica",
+    "reading": "Lee {name}",
+    "trading": "Comercia con {name}",
+    "pickpocketing": "Roba a {name}",
+    "lockpicking": "Fuerza una cerradura",
+    "training": "Entrena",
+    "waiting": "Espera",
+    "sleeping": "Duerme",
+    "dead": "Muerto",
+    "sneaking": "Sigiloso",
+    "swimming": "Nada",
+    "riding": "Cabalga en {name}",
+    "riding_no_name": "A caballo",
+    "wanted": "Se busca: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }

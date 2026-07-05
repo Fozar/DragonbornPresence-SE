@@ -7,5 +7,20 @@
     "crafting_smithing": "鍛冶中",
     "crafting_brewing": "調合中",
     "crafting_enchanting": "エンチャント中",
-    "crafting_other": "製作中"
+    "crafting_other": "製作中",
+    "reading": "{name}を読書中",
+    "trading": "{name}と取引中",
+    "pickpocketing": "{name}からスリ中",
+    "lockpicking": "開錠中",
+    "training": "訓練中",
+    "waiting": "待機中",
+    "sleeping": "就寝中",
+    "dead": "死亡",
+    "sneaking": "隠密中",
+    "swimming": "遊泳中",
+    "riding": "{name}に騎乗中",
+    "riding_no_name": "騎乗中",
+    "wanted": "賞金: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }

@@ -7,5 +7,20 @@
     "crafting_smithing": "Smithing",
     "crafting_brewing": "Brewing",
     "crafting_enchanting": "Enchanting",
-    "crafting_other": "Crafting"
+    "crafting_other": "Crafting",
+    "reading": "Reading {name}",
+    "trading": "Trading with {name}",
+    "pickpocketing": "Pickpocketing {name}",
+    "lockpicking": "Picking a lock",
+    "training": "Training",
+    "waiting": "Waiting",
+    "sleeping": "Sleeping",
+    "dead": "Dead",
+    "sneaking": "Sneaking",
+    "swimming": "Swimming",
+    "riding": "Riding {name}",
+    "riding_no_name": "On horseback",
+    "wanted": "Wanted: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }
