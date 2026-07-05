@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.6.0 — 2026-07-05
+
+Major feature release — the presence now covers nearly everything you do in Skyrim:
+
+- **In-game clock** — the current game time is shown after the location, e.g. `Skyrim: Whiterun · 14:30` (rounded to half an hour). Toggle: `show_time`.
+- **Weather** — 🌧 while raining, ❄ while snowing, shown next to the clock (exteriors only). Toggle: `show_weather`. Locale keys `weather_rain` / `weather_snow` let you replace the emoji with text.
+- **Reading** — opening a book shows `Reading <book title>`. Locale key `reading`.
+- **Trading** — bartering with a merchant shows `Trading with <name>`. Locale key `trading`.
+- **Pickpocketing** — shows `Pickpocketing <name>` (regular container looting is intentionally not shown). Locale key `pickpocketing`.
+- **Lockpicking** — shows `Picking a lock`. Locale key `lockpicking`.
+- **Training** — shows `Training` at a skill trainer. Locale key `training`.
+- **Sleeping / waiting** — shows `Sleeping` or `Waiting` while time passes. Locale keys `sleeping` / `waiting`. All of the above share the `show_menus` toggle.
+- **Sneaking / swimming / riding** — shows `Sneaking`, `Swimming`, or `Riding <horse name>` when nothing more important is happening. Toggle: `show_movement`. Locale keys `sneaking`, `swimming`, `riding`, `riding_no_name`.
+- **Bounty** — if any hold wants your head, the details line shows `Wanted: <total gold>`. Toggle: `show_bounty`. Locale key `wanted` with `{gold}` placeholder.
+- **Death** — dying shows `Dead` until you reload. Toggle: `show_death`. Locale key `dead`.
+
+All new features are enabled by default and localized in all 11 languages. Internals: menu handling refactored into per-menu handlers; a lightweight 2-second poller (game-thread task, no hooks) detects movement/time/weather/bounty changes; stale presence state is now fully cleared when a save is loaded.
+
 ## 2.5.1 — 2026-05-26
 
 Fixed crafting detection: all stations fire the same `"Crafting Menu"` event; the type is now determined by inspecting the active `CraftingSubMenu` subclass at runtime. Alchemy labs now correctly show `"Brewing"`, enchanting tables show `"Enchanting"`, cooking pots and other recipe stations show `"Crafting"` (locale key `crafting_other`). Added locale key `crafting_other` for the `ConstructibleObjectMenu` type (cooking, Hearthfire building, etc.).

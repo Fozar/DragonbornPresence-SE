@@ -3,7 +3,7 @@
 [font=Tahoma][size=5][b]DRAGONBORN PRESENCE[/b][/size]
 [size=3]DISCORD RICH PRESENCE SKSE PLUGIN[/size][/font][/center]
 
-[font=Tahoma]Show your friends what you're up to in Skyrim — right in Discord. Dragonborn Presence displays your current location, character name, race, level, active quest, and combat state as Discord Rich Presence, updating in real time as you explore and fight your way through the world.[/font]
+[font=Tahoma]Show your friends what you're up to in Skyrim — right in Discord. Dragonborn Presence displays your current location, in-game time and weather, character name, race, level, active quest, and whatever you're doing right now — fighting, talking, trading, crafting, reading, sneaking, riding, sleeping, even getting a bounty on your head — as Discord Rich Presence, updating in real time as you explore the world.[/font]
 
 [font=Tahoma][url=https://www.nexusmods.com/skyrim/mods/97371]Legendary Edition version[/url]   [url=https://github.com/Fozar/DragonbornPresence-SE]Source Code[/url][/font]
 
@@ -16,9 +16,14 @@
 [*][b]Combat[/b] — while fighting, the quest is replaced with the enemy's name, e.g. [i]Skyrim: Helgen · In combat with Alduin[/i]. Reverts to the quest when combat ends.
 [*][b]NPC dialogue[/b] — while talking to someone, shows their name, e.g. [i]Skyrim: Whiterun · Talking to Farengar Secret-Fire[/i]. Reverts when the conversation ends.
 [*][b]Crafting[/b] — while at a crafting station, shows the activity: [i]Smithing[/i] (forge, workbench, tanning rack, smelter), [i]Brewing[/i] (alchemy lab), [i]Enchanting[/i] (enchanting table), or [i]Crafting[/i] (cooking pots, Hearthfire stations, etc.). Reverts to the active quest when the menu closes.
+[*][b]In-game time & weather[/b] — the game clock is shown after the location, e.g. [i]Skyrim: Whiterun · 14:30 🌧[/i], with a rain or snow marker while outside.
+[*][b]Activities[/b] — [i]Reading <book title>[/i], [i]Trading with <merchant>[/i], [i]Pickpocketing <victim>[/i], [i]Picking a lock[/i], [i]Training[/i], [i]Sleeping[/i], [i]Waiting[/i].
+[*][b]Movement[/b] — [i]Sneaking[/i], [i]Swimming[/i], or [i]Riding <horse name>[/i] when nothing more important is happening.
+[*][b]Bounty[/b] — if any hold wants your head, the details line shows [i]Wanted: <gold>[/i].
+[*][b]Death[/b] — dying shows [i]Dead[/i] until you reload. Sovngarde awaits.
 [*][b]Session timer[/b] — shows how long you've been playing this session.
 [*][b]Menu states[/b] — displays [i]Main menu[/i] while on the title screen and [i]Editing character[/i] during character creation.
-[*][b]Configurable[/b] — location, quest, combat, crafting, and character info can each be toggled on or off in a JSON file.
+[*][b]Configurable[/b] — every element can be toggled on or off independently in a JSON file.
 [/list][/font]
 
 [font=Tahoma][size=4][b]— How to install —[/b][/size][/font]
@@ -61,7 +66,13 @@ No .esp. No plugins to enable. Just drop and play.
     "show_combat": true,
     "show_dialogue": true,
     "show_crafting": true,
-    "show_player_info": true
+    "show_player_info": true,
+    "show_menus": true,
+    "show_movement": true,
+    "show_time": true,
+    "show_weather": true,
+    "show_bounty": true,
+    "show_death": true
 }[/font]
 
 [font=Tahoma]Set any value to [font=Courier New]false[/font] to hide that element. If the file is missing or a key is absent, the feature defaults to on.[/font]

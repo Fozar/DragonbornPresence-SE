@@ -2,22 +2,28 @@
 
 An SKSE plugin for **Skyrim Special Edition** that displays your current in-game state as Discord Rich Presence.
 
-While you play, Discord shows your character's name, race, level, current location, active quest, and current combat — and updates automatically as you move through the world.
+While you play, Discord shows your character's name, race, level, current location, in-game time and weather, active quest, and what you're doing right now — fighting, talking, trading, crafting, reading, sneaking, riding, sleeping — and updates automatically as you move through the world.
 
 ---
 
 ## Features
 
 - Current location displayed in Discord (worldspace + named location)
+- In-game clock — e.g. `Skyrim: Whiterun · 14:30` (rounded to half an hour)
+- Weather — 🌧 while raining, ❄ while snowing (exteriors only)
 - Character info: name, race, and level
 - Active quest name shown alongside the location
 - Combat state — shows `In combat with <enemy name>` while in combat, replacing the quest suffix
-- NPC dialogue — shows `Talking to <NPC name>` while in conversation, replacing the combat/quest suffix
-- Crafting — shows `Smithing`, `Brewing`, or `Enchanting` while at a crafting station, replacing the quest suffix
+- NPC dialogue — shows `Talking to <NPC name>` while in conversation
+- Crafting — shows `Smithing`, `Brewing`, or `Enchanting` while at a crafting station
+- Activities — `Reading <book>`, `Trading with <merchant>`, `Pickpocketing <victim>`, `Picking a lock`, `Training`, `Sleeping`, `Waiting`
+- Movement — `Sneaking`, `Swimming`, or `Riding <horse name>` when nothing more important is happening
+- Bounty — `Wanted: <gold>` in the details line while any hold has a bounty on you
+- Death — shows `Dead` when you die
 - Session timer showing how long you've been playing
 - State-aware presence: Main Menu, Character Creation, Loading, and In-Game are all handled separately
-- Configurable — location, quest, combat, crafting, and character info can each be toggled via a JSON file
-- Localization support — English labels can be replaced via a JSON file
+- Configurable — every element can be toggled independently via a JSON file
+- Localization support — 11 languages included, all labels replaceable via a JSON file
 - Graceful degradation if Discord is not running
 
 ---
@@ -50,7 +56,13 @@ Edit `Data\SKSE\Plugins\DragonbornPresenceConfig.json` to control what appears i
     "show_combat": true,
     "show_dialogue": true,
     "show_crafting": true,
-    "show_player_info": true
+    "show_player_info": true,
+    "show_menus": true,
+    "show_movement": true,
+    "show_time": true,
+    "show_weather": true,
+    "show_bounty": true,
+    "show_death": true
 }
 ```
 
@@ -60,8 +72,16 @@ Edit `Data\SKSE\Plugins\DragonbornPresenceConfig.json` to control what appears i
 - `show_dialogue` — NPC name shown during conversation, replacing the combat/quest suffix
 - `show_crafting` — activity shown while at a crafting station (`Smithing`, `Brewing`, or `Enchanting`), replacing the quest suffix
 - `show_player_info` — character name, race, and level shown in the details line
+- `show_menus` — activity shown while reading a book, trading, pickpocketing, lockpicking, training, sleeping, or waiting
+- `show_movement` — `Sneaking` / `Swimming` / `Riding <horse>` when no higher-priority activity is shown
+- `show_time` — in-game clock after the location
+- `show_weather` — rain/snow marker next to the clock (exteriors only)
+- `show_bounty` — `Wanted: <gold>` in the details line when your total bounty is above zero
+- `show_death` — `Dead` when your character dies
 
 If the file is missing or a key is absent, that feature defaults to `true`. An invalid value for a key is silently ignored and the default is kept.
+
+**Suffix priority** (only one is shown at a time): death > dialogue > combat > crafting > menu activity > movement > active quest.
 
 ---
 
@@ -95,17 +115,39 @@ You can also edit `Data\SKSE\Plugins\DragonbornPresenceLocale.json` directly at 
     "crafting_smithing": "Smithing",
     "crafting_brewing": "Brewing",
     "crafting_enchanting": "Enchanting",
-    "crafting_other": "Crafting"
+    "crafting_other": "Crafting",
+    "reading": "Reading {name}",
+    "trading": "Trading with {name}",
+    "pickpocketing": "Pickpocketing {name}",
+    "lockpicking": "Picking a lock",
+    "training": "Training",
+    "waiting": "Waiting",
+    "sleeping": "Sleeping",
+    "dead": "Dead",
+    "sneaking": "Sneaking",
+    "swimming": "Swimming",
+    "riding": "Riding {name}",
+    "riding_no_name": "On horseback",
+    "wanted": "Wanted: {gold}",
+    "weather_rain": "🌧",
+    "weather_snow": "❄"
 }
 ```
 
-- `combat_fighting` — shown when an enemy name is known. `{name}` is replaced with the enemy's name at runtime (e.g. `"In combat with Alduin"`). Place it anywhere in the string; SOV languages can write `"{name}と戦闘中"`.
-- `combat_no_target` — shown when in combat but no enemy name is available (rare transient state). Falls back to `"In combat"` if the key is absent.
-- `talking_to` — shown while in conversation with an NPC. `{name}` is replaced with the NPC's name (e.g. `"Talking to Farengar Secret-Fire"`). Flexible placement: `"{name}と会話中"` works for SOV languages.
-- `crafting_smithing` — shown while using a smithing, tanning, smelting, or woodchopping station. Defaults to `"Smithing"`.
-- `crafting_brewing` — shown while at an alchemy lab. Defaults to `"Brewing"`.
-- `crafting_enchanting` — shown while at an enchanting table. Defaults to `"Enchanting"`.
-- `crafting_other` — shown for any other recipe station (cooking pots, Hearthfire building tables, etc.). Defaults to `"Crafting"`.
+All `{name}` keys replace the placeholder at runtime; position is flexible so SOV languages can write e.g. `"{name}と戦闘中"`.
+
+- `combat_fighting` — shown when an enemy name is known (e.g. `"In combat with Alduin"`).
+- `combat_no_target` — shown when in combat but no enemy name is available (rare transient state).
+- `talking_to` — shown while in conversation with an NPC.
+- `crafting_smithing` / `crafting_brewing` / `crafting_enchanting` — smithing stations / alchemy lab / enchanting table.
+- `crafting_other` — any other recipe station (cooking pots, Hearthfire building tables, etc.).
+- `reading` — `{name}` is the book's title.
+- `trading` / `pickpocketing` — `{name}` is the merchant's / victim's name.
+- `lockpicking`, `training`, `waiting`, `sleeping`, `dead` — plain labels.
+- `sneaking` / `swimming` — plain labels shown while sneaking or swimming.
+- `riding` — `{name}` is the mount's name; `riding_no_name` is used when the mount has no name.
+- `wanted` — `{gold}` is replaced with your total bounty across all holds.
+- `weather_rain` / `weather_snow` — shown next to the in-game clock; default to the 🌧 / ❄ emoji, replace with text if you prefer.
 
 If the file is missing or any key is absent, English defaults are used.
 
@@ -148,14 +190,18 @@ Pure C++ DLL — no `.esp`, no Papyrus scripts.
 **`DragonbornPresence.cpp`** — All state and Discord logic.
 
 - **State machine** (`enum class State`): `Loading → MainMenu → Playing / EditingCharacter`. Transitions via `TransitionTo()`.
-- **`MenuEventSink`** — listens to `MenuOpenCloseEvent`. Maps `"Main Menu"`, `"Loading Menu"`, `"RaceSex Menu"`, and `"Journal Menu"` to state transitions or presence refreshes.
+- **`MenuEventSink`** — listens to `MenuOpenCloseEvent` and dispatches to per-menu handlers: state transitions (`Main Menu`, `Loading Menu`, `RaceSex Menu`), dialogue, crafting, book reading, bartering, pickpocketing (`ContainerMenu` in pickpocket mode only), lockpicking, training, and the sleep/wait menu.
 - **`LocationChangeSink`** — listens to `TESActorLocationChangeEvent`; calls `RefreshPosition()` when the player changes named location.
 - **`CellLoadSink`** — listens to `TESCellFullyLoadedEvent`; calls `RefreshPosition()` when the player's cell finishes loading.
 - **`QuestStageSink`** / **`QuestStartStopSink`** — listen to quest stage and start/stop events; refresh presence via an SKSE task so the update runs on the game thread.
-- **`CombatSink`** — listens to `TESCombatEvent` filtered to the player. On `kCombat` stores `"In combat with <target name>"` in `g_combatTarget` and triggers a refresh; on `kNone` clears it. While `g_combatTarget` is set it replaces the quest suffix in the presence state line.
+- **`CombatSink`** — listens to `TESCombatEvent` filtered to the player. On `kCombat` stores `"In combat with <target name>"` in `g_combatTarget` and triggers a refresh; on `kNone` clears it.
+- **`DeathSink`** — listens to `TESDeathEvent`; shows `Dead` when the player dies, cleared on load.
+- **`SleepStartSink`** / **`SleepStopSink`** — listen to `TESSleepStartEvent` / `TESSleepStopEvent` for the `Sleeping` label.
+- **`PollGameState()`** — game-thread task run every ~2 s by the callback thread; detects changes in sneaking/swimming/riding, in-game time, weather, and bounty (none of which have engine events) and refreshes only when the composite state changes.
 - **`BuildPosition()`** — traverses the `parentLoc` chain to find the first named ancestor. Returns `"Worldspace: Location"` for exterior, `"Location"` for interior, cell name as last resort. Caches the last non-empty result to handle null pointers during location boundary crossing.
-- **`BuildActiveQuest()`** — scans displayed quest objectives and returns the name of the highest-priority active quest. Appended to the location string with a `·` separator when not in combat.
-- **`BuildPlayerInfo()`** — returns `"Name - Race (Level)"`.
+- **`BuildActiveQuest()`** — scans displayed quest objectives and returns the name of the highest-priority active quest.
+- **`BuildPlayerInfo()`** — returns `"Name - Race (Level)"`; the details line also carries the bounty when above zero.
+- **`BuildTimeWeather()`** — in-game clock (floored to 30 minutes) plus rain/snow marker (exteriors only).
 - **`SendPresence()`** — sends a `discord::Activity` to the Discord Game SDK.
 - **`StartCallbackThread()`** — background thread that posts one `SKSE::GetTaskInterface()->AddTask` per 100 ms to call `g_core->RunCallbacks()` on the game thread. Keeps Discord IPC processing off the hot path without per-frame overhead.
 - **`DeferredRefresh(int ticks)`** — self-rescheduling SKSE task used after `EditingCharacter → Playing` to wait ~10 frames for the engine to commit the new character name.
