@@ -3,6 +3,7 @@
 #include "discord.h"
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <ctime>
 #include <fstream>
 #include <string>
@@ -16,6 +17,7 @@ namespace {
 constexpr discord::ClientId kAppId          = 565627104608256015LL;
 constexpr const char*       kLargeImageKey  = "skyrim_logo";
 constexpr const char*       kLargeImageText = "The Elder Scrolls V: Skyrim";
+constexpr const char*       kSeparator      = " \xC2\xB7 ";  // · (U+00B7)
 
 enum class State { Loading, MainMenu, EditingCharacter, Playing };
 
@@ -31,12 +33,32 @@ std::unordered_map<std::string, std::string> g_locale = {
     {"crafting_smithing",   "Smithing"},
     {"crafting_brewing",    "Brewing"},
     {"crafting_enchanting", "Enchanting"},
-    {"crafting_other",    "Crafting"},
+    {"crafting_other",      "Crafting"},
+    {"reading",             "Reading {name}"},
+    {"trading",             "Trading with {name}"},
+    {"pickpocketing",       "Pickpocketing {name}"},
+    {"lockpicking",         "Picking a lock"},
+    {"training",            "Training"},
+    {"waiting",             "Waiting"},
+    {"sleeping",            "Sleeping"},
+    {"dead",                "Dead"},
+    {"sneaking",            "Sneaking"},
+    {"swimming",            "Swimming"},
+    {"riding",              "Riding {name}"},
+    {"riding_no_name",      "On horseback"},
+    {"wanted",              "Wanted: {gold}"},
+    {"weather_rain",        "\xF0\x9F\x8C\xA7"},   // 🌧
+    {"weather_snow",        "\xE2\x9D\x84"},       // ❄
 };
-std::string    g_lastPosition;
-std::string    g_combatTarget;
-std::string    g_dialogueSpeaker;
-std::string    g_craftingActivity;
+
+// Presence sub-state. All mutated on the game thread (event sinks + AddTask).
+std::string g_lastPosition;     // last non-empty location (engine nulls during transitions)
+std::string g_combatTarget;     // "In combat with X" while player is in combat
+std::string g_dialogueSpeaker;  // "Talking to X" while Dialogue Menu is open
+std::string g_craftingActivity; // "Smithing"/"Brewing"/… while Crafting Menu is open
+std::string g_menuActivity;     // reading/trading/pickpocketing/lockpicking/training/waiting/sleeping
+std::string g_pollSignature;    // movement|time-weather|bounty snapshot for change detection
+bool        g_isDead = false;   // player died (cleared on load/new game)
 
 struct Config {
     bool show_location    = true;
@@ -45,6 +67,12 @@ struct Config {
     bool show_dialogue    = true;
     bool show_crafting    = true;
     bool show_player_info = true;
+    bool show_menus       = true;   // book/barter/pickpocket/lockpick/training/sleep/wait
+    bool show_movement    = true;   // sneaking/swimming/riding
+    bool show_time        = true;   // in-game clock
+    bool show_weather     = true;   // rain/snow (exterior only)
+    bool show_bounty      = true;   // total crime gold
+    bool show_death       = true;
 } g_config;
 
 static std::string SafeStr(const char* s) {
@@ -58,15 +86,20 @@ static const std::string& Locale(const std::string& key) {
     return it != g_locale.end() ? it->second : kFallback;
 }
 
-// Replaces {name} in tmpl with name; appends " " + name if no placeholder (legacy fallback).
-static std::string FormatWithName(const std::string& tmpl, const std::string& name) {
-    constexpr std::string_view kPlaceholder = "{name}";
-    auto pos = tmpl.find(kPlaceholder);
+// Replaces placeholder in tmpl with value; appends " " + value if no placeholder
+// (legacy fallback for locale files written before the placeholder existed).
+static std::string FormatPlaceholder(const std::string& tmpl, std::string_view placeholder,
+                                     const std::string& value) {
+    auto pos = tmpl.find(placeholder);
     if (pos == std::string::npos)
-        return tmpl + " " + name;
+        return tmpl + " " + value;
     std::string result = tmpl;
-    result.replace(pos, kPlaceholder.size(), name);
+    result.replace(pos, placeholder.size(), value);
     return result;
+}
+
+static std::string FormatWithName(const std::string& tmpl, const std::string& name) {
+    return FormatPlaceholder(tmpl, "{name}", name);
 }
 
 static std::string BuildPosition(RE::PlayerCharacter* player) {
@@ -81,7 +114,7 @@ static std::string BuildPosition(RE::PlayerCharacter* player) {
     std::string wsName   = ws   ? SafeStr(ws->GetName())   : "";
     std::string cellName = cell ? SafeStr(cell->GetName()) : "";
 
-if (!wsName.empty())
+    if (!wsName.empty())
         return (!locName.empty() && locName != wsName) ? wsName + ": " + locName : wsName;
     if (!locName.empty()) return locName;
     return cellName;
@@ -113,6 +146,67 @@ static std::string BuildPlayerInfo(RE::PlayerCharacter* player) {
     std::string name     = SafeStr(player->GetName());
     std::string raceName = race ? SafeStr(race->GetName()) : "";
     return name + " - " + raceName + " (" + std::to_string(player->GetLevel()) + ")";
+}
+
+// Sneaking / swimming / riding — polled, no dedicated engine events.
+static std::string BuildMovement(RE::PlayerCharacter* player) {
+    if (!g_config.show_movement) return "";
+    if (auto* st = player->AsActorState(); st && st->IsSwimming())
+        return Locale("swimming");
+    if (player->IsSneaking())
+        return Locale("sneaking");
+    if (player->IsOnMount()) {
+        RE::NiPointer<RE::Actor> mount;
+        std::string name;
+        if (player->GetMount(mount) && mount)
+            name = SafeStr(mount->GetName());
+        return name.empty() ? Locale("riding_no_name")
+                            : FormatWithName(Locale("riding"), name);
+    }
+    return "";
+}
+
+// In-game clock (floored to 30 minutes so presence doesn't churn) + rain/snow marker.
+static std::string BuildTimeWeather(RE::PlayerCharacter* player) {
+    std::string result;
+    if (g_config.show_time) {
+        if (auto* cal = RE::Calendar::GetSingleton()) {
+            float hour = cal->GetHour();
+            int   hh   = static_cast<int>(hour) % 24;
+            int   mm   = (hour - static_cast<int>(hour)) >= 0.5f ? 30 : 0;
+            char  buf[8];
+            std::snprintf(buf, sizeof(buf), "%02d:%02d", hh, mm);
+            result = buf;
+        }
+    }
+    if (g_config.show_weather) {
+        auto* cell = player->GetParentCell();
+        if (!cell || !cell->IsInteriorCell()) {  // no weather indoors
+            if (auto* sky = RE::Sky::GetSingleton()) {
+                std::string w;
+                if (sky->IsRaining())      w = Locale("weather_rain");
+                else if (sky->IsSnowing()) w = Locale("weather_snow");
+                if (!w.empty())
+                    result += result.empty() ? w : " " + w;
+            }
+        }
+    }
+    return result;
+}
+
+// Total bounty across all crime-tracking factions (holds).
+static int GetTotalBounty() {
+    if (!g_config.show_bounty) return 0;
+    auto* dh = RE::TESDataHandler::GetSingleton();
+    if (!dh) return 0;
+    int total = 0;
+    for (auto* faction : dh->GetFormArray<RE::TESFaction>()) {
+        if (!faction || !(faction->data.flags & RE::FACTION_DATA::Flag::kTrackCrime))
+            continue;
+        if (auto gold = faction->GetCrimeGold(); gold > 0)
+            total += gold;
+    }
+    return total;
 }
 
 void SendPresence(const char* state, const char* details) {
@@ -147,29 +241,43 @@ void RefreshPosition(const char* trigger = nullptr) {
     const std::string& display = fallback ? g_lastPosition : position;
     std::string state = display;
 
+    std::string movement    = BuildMovement(player);
+    std::string timeWeather = BuildTimeWeather(player);
+    int         bounty      = GetTotalBounty();
+    // Snapshot for the poller: refresh only fires when this composite changes.
+    g_pollSignature = movement + '\x1F' + timeWeather + '\x1F' + std::to_string(bounty);
+
     std::string suffix;
-    if (!g_dialogueSpeaker.empty() && g_config.show_dialogue)
+    if (g_isDead && g_config.show_death)
+        suffix = Locale("dead");
+    else if (!g_dialogueSpeaker.empty() && g_config.show_dialogue)
         suffix = g_dialogueSpeaker;
     else if (!g_combatTarget.empty() && g_config.show_combat)
         suffix = g_combatTarget;
     else if (!g_craftingActivity.empty() && g_config.show_crafting)
         suffix = g_craftingActivity;
+    else if (!g_menuActivity.empty() && g_config.show_menus)
+        suffix = g_menuActivity;
+    else if (!movement.empty())
+        suffix = movement;
     else if (g_config.show_quest)
         suffix = BuildActiveQuest(player);
 
-    if (!suffix.empty()) {
-        if (!state.empty())
-            state += " \xC2\xB7 " + suffix;  // · (U+00B7)
-        else
-            state = suffix;
+    if (!suffix.empty())
+        state = state.empty() ? suffix : state + kSeparator + suffix;
+    if (!timeWeather.empty())
+        state = state.empty() ? timeWeather : state + kSeparator + timeWeather;
+
+    std::string details = g_config.show_player_info ? BuildPlayerInfo(player) : "";
+    if (bounty > 0) {
+        std::string wanted = FormatPlaceholder(Locale("wanted"), "{gold}", std::to_string(bounty));
+        details = details.empty() ? wanted : details + kSeparator + wanted;
     }
 
-    std::string playerInfo = g_config.show_player_info ? BuildPlayerInfo(player) : "";
-
-    SKSE::log::info("[{}] player='{}' location='{}' suffix='{}'{}",
-        trigger ? trigger : "refresh", playerInfo, display, suffix,
+    SKSE::log::info("[{}] player='{}' location='{}' suffix='{}' extra='{}'{}",
+        trigger ? trigger : "refresh", details, display, suffix, timeWeather,
         fallback ? " [fallback]" : "");
-    SendPresence(state.c_str(), playerInfo.c_str());
+    SendPresence(state.c_str(), details.c_str());
 }
 
 void DeferredRefresh(int ticks) {
@@ -208,7 +316,166 @@ void TransitionTo(State next) {
         g_combatTarget.clear();
         g_dialogueSpeaker.clear();
         g_craftingActivity.clear();
+        g_menuActivity.clear();
+        g_lastPosition.clear();  // may belong to another save after this load
+        g_isDead = false;
         break;
+    }
+}
+
+// Clears g_menuActivity (set by book/barter/pickpocket/lockpick/training/wait/sleep)
+// and refreshes if it was showing.
+static void ClearMenuActivity(const char* trigger) {
+    if (g_menuActivity.empty()) return;
+    g_menuActivity.clear();
+    if (g_state == State::Playing) RefreshPosition(trigger);
+}
+
+// ---- Menu handlers (called from MenuEventSink::ProcessEvent) --------------
+
+static void OnDialogueMenu(bool opening) {
+    if (opening && g_config.show_dialogue) {
+        // Deferred one frame so MenuTopicManager::speaker is populated.
+        SKSE::GetTaskInterface()->AddTask([]() {
+            if (!g_config.show_dialogue || g_state != State::Playing) return;
+            auto* mtm = RE::MenuTopicManager::GetSingleton();
+            if (mtm) {
+                if (auto ref = mtm->speaker.get()) {
+                    std::string name = SafeStr(ref->GetName());
+                    if (!name.empty())
+                        g_dialogueSpeaker = FormatWithName(Locale("talking_to"), name);
+                }
+            }
+            RefreshPosition("dialogue-open");
+        });
+    } else if (!opening) {
+        g_dialogueSpeaker.clear();
+        if (g_state == State::Playing)
+            RefreshPosition("dialogue-close");
+    }
+}
+
+static void OnCraftingMenu(bool opening) {
+    if (!g_config.show_crafting) return;
+    if (opening) {
+        // subMenu and furniture are set after the open event — defer one frame.
+        SKSE::GetTaskInterface()->AddTask([]() {
+            if (!g_config.show_crafting || g_state != State::Playing) return;
+            std::string activity = Locale("crafting_smithing");
+            if (auto* ui = RE::UI::GetSingleton()) {
+                if (auto gptr = ui->GetMenu<RE::CraftingMenu>()) {
+                    auto* cm  = static_cast<RE::CraftingMenu*>(gptr.get());
+                    auto* sub = cm->GetCraftingSubMenu();
+                    // sub->furniture can be a TESObjectREFR* (SmithingMenu) or a
+                    // TESFurniture* (AlchemyMenu, EnchantConstructMenu) depending on
+                    // the subclass. Check the actual form type to handle both cases.
+                    RE::TESFurniture* furn = nullptr;
+                    if (sub && sub->furniture) {
+                        auto* form = reinterpret_cast<RE::TESForm*>(sub->furniture);
+                        if (form->GetFormType() == RE::FormType::Reference) {
+                            auto* base = static_cast<RE::TESObjectREFR*>(form)->GetBaseObject();
+                            furn = base ? base->As<RE::TESFurniture>() : nullptr;
+                        } else {
+                            furn = form->As<RE::TESFurniture>();
+                        }
+                    }
+                    if (furn) {
+                        using BT = RE::TESFurniture::WorkBenchData::BenchType;
+                        switch (furn->workBenchData.benchType.get()) {
+                        case BT::kAlchemy:
+                        case BT::kAlchemyExperiment:
+                            activity = Locale("crafting_brewing");    break;
+                        case BT::kEnchanting:
+                        case BT::kEnchantingExperiment:
+                            activity = Locale("crafting_enchanting"); break;
+                        case BT::kCreateObject:
+                            activity = Locale("crafting_other");      break;
+                        default: break;  // kSmithingWeapon, kSmithingArmor
+                        }
+                    }
+                }
+            }
+            g_craftingActivity = activity;
+            SKSE::log::info("Menu: 'Crafting Menu' open -> crafting='{}'", g_craftingActivity);
+            RefreshPosition("crafting-open");
+        });
+    } else {
+        SKSE::log::info("Menu: 'Crafting Menu' close");
+        g_craftingActivity.clear();
+        if (g_state == State::Playing) RefreshPosition("crafting-close");
+    }
+}
+
+static void OnBookMenu(bool opening) {
+    if (!g_config.show_menus) return;
+    if (opening) {
+        // Target form is set after the open event — defer one frame.
+        SKSE::GetTaskInterface()->AddTask([]() {
+            if (!g_config.show_menus || g_state != State::Playing) return;
+            std::string name;
+            if (auto* book = RE::BookMenu::GetTargetForm())
+                name = SafeStr(book->GetName());
+            if (!name.empty()) {
+                g_menuActivity = FormatWithName(Locale("reading"), name);
+                RefreshPosition("book-open");
+            }
+        });
+    } else {
+        ClearMenuActivity("book-close");
+    }
+}
+
+static void OnBarterMenu(bool opening) {
+    if (!g_config.show_menus) return;
+    if (opening) {
+        SKSE::GetTaskInterface()->AddTask([]() {
+            if (!g_config.show_menus || g_state != State::Playing) return;
+            std::string name;
+            if (auto ref = RE::TESObjectREFR::LookupByHandle(RE::BarterMenu::GetTargetRefHandle()))
+                name = SafeStr(ref->GetName());
+            if (!name.empty()) {
+                g_menuActivity = FormatWithName(Locale("trading"), name);
+                RefreshPosition("barter-open");
+            }
+        });
+    } else {
+        ClearMenuActivity("barter-close");
+    }
+}
+
+static void OnContainerMenu(bool opening) {
+    if (!g_config.show_menus) return;
+    if (opening) {
+        SKSE::GetTaskInterface()->AddTask([]() {
+            if (!g_config.show_menus || g_state != State::Playing) return;
+            auto* ui = RE::UI::GetSingleton();
+            auto  cm = ui ? ui->GetMenu<RE::ContainerMenu>() : nullptr;
+            // Only pickpocketing is presence-worthy; plain looting is too noisy.
+            if (!cm || cm->GetContainerMode() != RE::ContainerMenu::ContainerMode::kPickpocket)
+                return;
+            std::string name;
+            if (auto ref = RE::TESObjectREFR::LookupByHandle(RE::ContainerMenu::GetTargetRefHandle()))
+                name = SafeStr(ref->GetName());
+            if (!name.empty()) {
+                g_menuActivity = FormatWithName(Locale("pickpocketing"), name);
+                RefreshPosition("pickpocket-open");
+            }
+        });
+    } else {
+        ClearMenuActivity("container-close");
+    }
+}
+
+// Lockpicking / Training / Sleep-Wait — static text, no target lookup needed.
+static void OnSimpleActivityMenu(bool opening, const char* localeKey, const char* trigger) {
+    if (!g_config.show_menus) return;
+    if (opening) {
+        if (g_state == State::Playing) {
+            g_menuActivity = Locale(localeKey);
+            RefreshPosition(trigger);
+        }
+    } else {
+        ClearMenuActivity(trigger);
     }
 }
 
@@ -236,81 +503,25 @@ public:
         } else if (menu == "RaceSex Menu") {
             SKSE::log::info("Menu: '{}' {}", menu.c_str(), opening ? "open" : "close");
             TransitionTo(opening ? State::EditingCharacter : State::Playing);
-        } else if (menu == "Dialogue Menu") {
-            if (opening && g_config.show_dialogue) {
-                SKSE::GetTaskInterface()->AddTask([]() {
-                    if (!g_config.show_dialogue || g_state != State::Playing) return;
-                    auto* mtm = RE::MenuTopicManager::GetSingleton();
-                    if (mtm) {
-                        if (auto ref = mtm->speaker.get()) {
-                            std::string name = SafeStr(ref->GetName());
-                            if (!name.empty())
-                                g_dialogueSpeaker = FormatWithName(Locale("talking_to"), name);
-                        }
-                    }
-                    RefreshPosition("dialogue-open");
-                });
-            } else if (!opening) {
-                g_dialogueSpeaker.clear();
-                if (g_state == State::Playing)
-                    RefreshPosition("dialogue-close");
-            }
+        } else if (menu == RE::DialogueMenu::MENU_NAME) {
+            OnDialogueMenu(opening);
         } else if (menu == "Journal Menu") {
             if (!opening && g_state == State::Playing)
                 RefreshPosition("journal-close");
-        } else if (menu == "Crafting Menu") {
-            if (g_config.show_crafting) {
-                if (opening) {
-                    // subMenu and furniture are set after the open event — defer one frame.
-                    SKSE::GetTaskInterface()->AddTask([]() {
-                        if (!g_config.show_crafting || g_state != State::Playing) return;
-                        std::string activity = Locale("crafting_smithing");
-                        if (auto* ui = RE::UI::GetSingleton()) {
-                            if (auto gptr = ui->GetMenu<RE::CraftingMenu>()) {
-                                auto* cm   = static_cast<RE::CraftingMenu*>(gptr.get());
-                                auto* sub  = cm->GetCraftingSubMenu();
-                                // sub->furniture can be a TESObjectREFR* (SmithingMenu) or a
-                                // TESFurniture* (AlchemyMenu, EnchantConstructMenu) depending on
-                                // the subclass. Check the actual form type to handle both cases.
-                                RE::TESFurniture* furn = nullptr;
-                                if (sub && sub->furniture) {
-                                    auto* form = reinterpret_cast<RE::TESForm*>(sub->furniture);
-                                    if (form->GetFormType() == RE::FormType::Reference) {
-                                        auto* base = static_cast<RE::TESObjectREFR*>(form)->GetBaseObject();
-                                        furn = base ? base->As<RE::TESFurniture>() : nullptr;
-                                    } else {
-                                        furn = form->As<RE::TESFurniture>();
-                                    }
-                                }
-                                SKSE::log::info("Crafting: sub={} furn={} benchType={}",
-                                    (void*)sub, (void*)furn,
-                                    static_cast<int>(furn ? furn->workBenchData.benchType.get() : RE::TESFurniture::WorkBenchData::BenchType::kNone));
-                                if (furn) {
-                                    using BT = RE::TESFurniture::WorkBenchData::BenchType;
-                                    switch (furn->workBenchData.benchType.get()) {
-                                    case BT::kAlchemy:
-                                    case BT::kAlchemyExperiment:
-                                        activity = Locale("crafting_brewing");    break;
-                                    case BT::kEnchanting:
-                                    case BT::kEnchantingExperiment:
-                                        activity = Locale("crafting_enchanting"); break;
-                                    case BT::kCreateObject:
-                                        activity = Locale("crafting_other");      break;
-                                    default: break;  // kSmithingWeapon, kSmithingArmor
-                                    }
-                                }
-                            }
-                        }
-                        g_craftingActivity = activity;
-                        SKSE::log::info("Menu: 'Crafting Menu' open -> crafting='{}'", g_craftingActivity);
-                        RefreshPosition("crafting-open");
-                    });
-                } else {
-                    SKSE::log::info("Menu: 'Crafting Menu' close");
-                    g_craftingActivity.clear();
-                    if (g_state == State::Playing) RefreshPosition("crafting-close");
-                }
-            }
+        } else if (menu == RE::CraftingMenu::MENU_NAME) {
+            OnCraftingMenu(opening);
+        } else if (menu == RE::BookMenu::MENU_NAME) {
+            OnBookMenu(opening);
+        } else if (menu == RE::BarterMenu::MENU_NAME) {
+            OnBarterMenu(opening);
+        } else if (menu == RE::ContainerMenu::MENU_NAME) {
+            OnContainerMenu(opening);
+        } else if (menu == RE::LockpickingMenu::MENU_NAME) {
+            OnSimpleActivityMenu(opening, "lockpicking", opening ? "lockpick-open" : "lockpick-close");
+        } else if (menu == RE::TrainingMenu::MENU_NAME) {
+            OnSimpleActivityMenu(opening, "training", opening ? "training-open" : "training-close");
+        } else if (menu == RE::SleepWaitMenu::MENU_NAME) {
+            OnSimpleActivityMenu(opening, "waiting", opening ? "wait-open" : "wait-close");
         }
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -388,8 +599,6 @@ public:
         // combat — only trigger if we're currently showing combat to avoid spam.
         bool mayEndCombat = ev->newState.get() == RE::ACTOR_COMBAT_STATE::kNone
                             && !g_combatTarget.empty();
-        SKSE::log::info("TESCombatEvent: state={} actorIsPlayer={} targetIsPlayer={}",
-            static_cast<int>(ev->newState.get()), actorIsPlayer, targetIsPlayer);
         if (!involvesPlayer && !mayEndCombat)
             return RE::BSEventNotifyControl::kContinue;
 
@@ -418,22 +627,89 @@ public:
     }
 };
 
+class DeathSink : public RE::BSTEventSink<RE::TESDeathEvent> {
+public:
+    RE::BSEventNotifyControl ProcessEvent(
+        const RE::TESDeathEvent* ev,
+        RE::BSTEventSource<RE::TESDeathEvent>*) override
+    {
+        if (!ev || !g_config.show_death) return RE::BSEventNotifyControl::kContinue;
+        if (ev->actorDying && ev->actorDying->IsPlayerRef()) {
+            SKSE::GetTaskInterface()->AddTask([]() {
+                if (g_state != State::Playing || g_isDead) return;
+                g_isDead = true;
+                RefreshPosition("death");
+            });
+        }
+        return RE::BSEventNotifyControl::kContinue;
+    }
+};
+
+// TESSleepStartEvent is only forward-declared in CommonLibSSE — fine, the sink
+// never dereferences the event.
+class SleepStartSink : public RE::BSTEventSink<RE::TESSleepStartEvent> {
+public:
+    RE::BSEventNotifyControl ProcessEvent(
+        const RE::TESSleepStartEvent*,
+        RE::BSTEventSource<RE::TESSleepStartEvent>*) override
+    {
+        if (g_config.show_menus) {
+            SKSE::GetTaskInterface()->AddTask([]() {
+                if (!g_config.show_menus || g_state != State::Playing) return;
+                g_menuActivity = Locale("sleeping");
+                RefreshPosition("sleep-start");
+            });
+        }
+        return RE::BSEventNotifyControl::kContinue;
+    }
+};
+
+class SleepStopSink : public RE::BSTEventSink<RE::TESSleepStopEvent> {
+public:
+    RE::BSEventNotifyControl ProcessEvent(
+        const RE::TESSleepStopEvent*,
+        RE::BSTEventSource<RE::TESSleepStopEvent>*) override
+    {
+        SKSE::GetTaskInterface()->AddTask([]() { ClearMenuActivity("sleep-stop"); });
+        return RE::BSEventNotifyControl::kContinue;
+    }
+};
+
 MenuEventSink      g_menuSink;
 LocationChangeSink g_locationSink;
 CellLoadSink       g_cellSink;
 QuestStageSink     g_questStageSink;
 QuestStartStopSink g_questStartStopSink;
 CombatSink         g_combatSink;
+DeathSink          g_deathSink;
+SleepStartSink     g_sleepStartSink;
+SleepStopSink      g_sleepStopSink;
+
+// Detects changes in polled state (movement/time/weather/bounty) that have no
+// engine events. Runs on the game thread every ~2 s.
+static void PollGameState() {
+    if (g_state != State::Playing) return;
+    auto* player = RE::PlayerCharacter::GetSingleton();
+    if (!player) return;
+
+    std::string sig = BuildMovement(player) + '\x1F' + BuildTimeWeather(player)
+                    + '\x1F' + std::to_string(GetTotalBounty());
+    if (sig != g_pollSignature)
+        RefreshPosition("poll");  // updates g_pollSignature itself
+}
 
 std::atomic<bool> g_callbackThreadRunning{false};
 
 static void StartCallbackThread() {
     if (g_callbackThreadRunning.exchange(true)) return;
     std::thread([]() {
+        int tick = 0;
         while (g_callbackThreadRunning) {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            SKSE::GetTaskInterface()->AddTask([]() {
+            const bool poll = (++tick % 20) == 0;  // every ~2 s
+            SKSE::GetTaskInterface()->AddTask([poll]() {
                 if (g_core) g_core->RunCallbacks();
+                if (poll) PollGameState();
             });
         }
     }).detach();
@@ -479,12 +755,21 @@ void LoadConfig() {
         try_bool("show_dialogue",    g_config.show_dialogue);
         try_bool("show_crafting",    g_config.show_crafting);
         try_bool("show_player_info", g_config.show_player_info);
+        try_bool("show_menus",       g_config.show_menus);
+        try_bool("show_movement",    g_config.show_movement);
+        try_bool("show_time",        g_config.show_time);
+        try_bool("show_weather",     g_config.show_weather);
+        try_bool("show_bounty",      g_config.show_bounty);
+        try_bool("show_death",       g_config.show_death);
     } catch (const nlohmann::json::exception& e) {
         SKSE::log::error("Failed to parse config JSON: {}", e.what());
     }
-    SKSE::log::info("Config: location={} quest={} combat={} dialogue={} crafting={} player_info={}",
+    SKSE::log::info("Config: location={} quest={} combat={} dialogue={} crafting={} player_info={} "
+        "menus={} movement={} time={} weather={} bounty={} death={}",
         g_config.show_location, g_config.show_quest, g_config.show_combat,
-        g_config.show_dialogue, g_config.show_crafting, g_config.show_player_info);
+        g_config.show_dialogue, g_config.show_crafting, g_config.show_player_info,
+        g_config.show_menus, g_config.show_movement, g_config.show_time,
+        g_config.show_weather, g_config.show_bounty, g_config.show_death);
 }
 
 void SetLocale() {
@@ -521,6 +806,9 @@ void RegisterGameEventHandlers() {
         src->AddEventSink<RE::TESQuestStageEvent>(&g_questStageSink);
         src->AddEventSink<RE::TESQuestStartStopEvent>(&g_questStartStopSink);
         src->AddEventSink<RE::TESCombatEvent>(&g_combatSink);
+        src->AddEventSink<RE::TESDeathEvent>(&g_deathSink);
+        src->AddEventSink<RE::TESSleepStartEvent>(&g_sleepStartSink);
+        src->AddEventSink<RE::TESSleepStopEvent>(&g_sleepStopSink);
     } else {
         SKSE::log::error("Failed to get RE::ScriptEventSourceHolder singleton.");
     }
@@ -530,7 +818,8 @@ void OnGameLoaded() {
     // kPostLoadGame / kNewGame fires on the main thread after the engine
     // has fully committed all save data — call RefreshPosition directly.
     SKSE::log::info("Game loaded — forcing presence refresh");
-    g_state = State::Playing;
+    g_state  = State::Playing;
+    g_isDead = false;
     RefreshPosition("game-loaded");
 }
 
