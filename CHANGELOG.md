@@ -18,6 +18,17 @@ Major feature release — the presence now covers nearly everything you do in Sk
 
 All new features are enabled by default and localized in all 11 languages. Internals: menu handling refactored into per-menu handlers; a lightweight 2-second poller (game-thread task, no hooks) detects movement/time/weather/bounty changes; stale presence state is now fully cleared when a save is loaded.
 
+Fixes:
+
+- **Skyrim 1.7.x support** — the September 2026 game update (runtime 1.7.99 / 1.7.104) crashed the plugin at startup with "failed to open address library file". Switched to the maintained CommonLibSSE-NG fork (alandtse, v10.1.0), which knows the new runtime and its shifted memory layouts. Requires the matching Address Library (`versionlib-1-7-104-0.bin`).
+- **The game no longer closes when Discord isn't running** — the Discord SDK is now initialized in "Discord not required" mode; the mod simply stays inactive.
+- **Long lines no longer break** — Discord limits each line to 128 bytes. Lines are now cut on a character boundary with `…` (previously Cyrillic/CJK text could end in a broken character), and the clock/weather is dropped first when space runs out.
+- **Updates are rate-limited** — identical updates are skipped and updates are spaced at least 4 s apart, with the latest state always delivered. Previously bursts (group fights, waiting/sleeping) could hit Discord's rate limit and leave a stale status.
+- **Forges show "Smithing" again** — forges share a bench type with smelters, tanning racks and cooking pots; the station keyword now tells them apart.
+- **Combat target stays current** — switching targets or killing the current enemy now updates the name (checked every 2 s); "In combat" no longer lingers after a fight.
+- **Active quest follows the journal** — the quest you set as active in the journal now takes priority over other quests.
+- Location/cell events are now processed on the game thread; config and locale files are also looked up next to the DLL if not found via the working directory.
+
 ## 2.5.1 — 2026-05-26
 
 Fixed crafting detection: all stations fire the same `"Crafting Menu"` event; the type is now determined by inspecting the active `CraftingSubMenu` subclass at runtime. Alchemy labs now correctly show `"Brewing"`, enchanting tables show `"Enchanting"`, cooking pots and other recipe stations show `"Crafting"` (locale key `crafting_other`). Added locale key `crafting_other` for the `ConstructibleObjectMenu` type (cooking, Hearthfire building, etc.).

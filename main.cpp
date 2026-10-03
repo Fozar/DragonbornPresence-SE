@@ -1,7 +1,7 @@
-#include <SKSE/SKSE.h>
+// RE headers must precede <Windows.h>: its macros (MAX_PATH, …) break CommonLib declarations
+#include "DragonbornPresence.h"
 #include <spdlog/sinks/basic_file_sink.h>
 #include <Windows.h>
-#include "DragonbornPresence.h"
 
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 

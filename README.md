@@ -30,7 +30,7 @@ While you play, Discord shows your character's name, race, level, current locati
 
 ## Requirements
 
-- Skyrim Special Edition or Anniversary Edition (any runtime — uses Address Library)
+- Skyrim Special Edition or Anniversary Edition, including the 1.7.x update (any runtime — uses Address Library)
 - [SKSE64](https://skse.silverlock.org/) matching your runtime
 
 ---
@@ -175,7 +175,7 @@ cmake -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
 
-On the first configure CMake downloads [CommonLibSSE-NG](https://github.com/CharmedBaryon/CommonLibSSE-NG) v3.7.0, [Discord Game SDK 3.2.1](https://discord.com/developers/docs/game-sdk/sdk-starter-guide), and several header-only libraries — this takes a minute or two. Subsequent builds use the cache and are fast.
+On the first configure CMake downloads [CommonLibSSE-NG](https://github.com/alandtse/CommonLibVR/tree/ng) v10.1.0 (alandtse fork — compiled from source, ~15 min the first time), [Discord Game SDK 3.2.1](https://discord.com/developers/docs/game-sdk/sdk-starter-guide), and several other libraries. Subsequent builds use the cache and are fast.
 
 The post-build step produces `DragonbornPresence.zip` in the build directory with the full install layout ready to drop into the game.
 
@@ -220,11 +220,12 @@ Pure C++ DLL — no `.esp`, no Papyrus scripts.
 
 | Dependency | Version | How |
 |---|---|---|
-| [CommonLibSSE-NG](https://github.com/CharmedBaryon/CommonLibSSE-NG) | v3.7.0 | CMake FetchContent |
+| [CommonLibSSE-NG](https://github.com/alandtse/CommonLibVR/tree/ng) (alandtse fork) | v10.1.0 | CMake FetchContent |
 | [Discord Game SDK](https://discord.com/developers/docs/game-sdk/sdk-starter-guide) | 3.2.1 | CMake download |
-| [nlohmann/json](https://github.com/nlohmann/json) | v3.11.3 | CMake FetchContent |
-| fmt | 10.2.1 | CMake FetchContent |
-| spdlog | v1.13.0 | CMake FetchContent |
+| [nlohmann/json](https://github.com/nlohmann/json) | v3.12.0 | CMake FetchContent |
+| fmt | 12.1.0 | CMake FetchContent |
+| spdlog | v1.16.0 | CMake FetchContent |
+| [DirectXTK](https://github.com/microsoft/DirectXTK) | oct2025 | CMake FetchContent (headers only, required by CommonLib) |
 
 ---
 

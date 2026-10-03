@@ -1,14 +1,19 @@
 #include "DragonbornPresence.h"
 #include "AdditionalFunctions.h"
 #include "discord.h"
+#include <Windows.h>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <ctime>
+#include <filesystem>
 #include <fstream>
+#include <optional>
 #include <string>
 #include <thread>
 #include <nlohmann/json.hpp>
+
+extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 namespace DragonbornPresence {
 
@@ -18,10 +23,13 @@ constexpr discord::ClientId kAppId          = 565627104608256015LL;
 constexpr const char*       kLargeImageKey  = "skyrim_logo";
 constexpr const char*       kLargeImageText = "The Elder Scrolls V: Skyrim";
 constexpr const char*       kSeparator      = " \xC2\xB7 ";  // · (U+00B7)
+constexpr std::size_t       kMaxFieldBytes  = 127;  // discord::Activity copies into char[128]
+constexpr auto              kMinSendInterval = std::chrono::seconds(4);  // Discord: 5 updates / 20 s
 
 enum class State { Loading, MainMenu, EditingCharacter, Playing };
 
-State          g_state             = State::Loading;
+// Written on the game thread; read by event sinks that may run elsewhere.
+std::atomic<State> g_state{State::Loading};
 discord::Core* g_core              = nullptr;
 int64_t        g_startTime         = 0;
 std::unordered_map<std::string, std::string> g_locale = {
@@ -102,6 +110,34 @@ static std::string FormatWithName(const std::string& tmpl, const std::string& na
     return FormatPlaceholder(tmpl, "{name}", name);
 }
 
+static std::string Join(const std::string& a, const std::string& b) {
+    if (a.empty()) return b;
+    if (b.empty()) return a;
+    return a + kSeparator + b;
+}
+
+// Cuts s to at most maxBytes without splitting a UTF-8 sequence and marks the cut
+// with "…". The Discord SDK truncates blindly at 127 bytes, which can leave a broken
+// trailing character for Cyrillic/CJK text.
+static void TruncateUtf8(std::string& s, std::size_t maxBytes) {
+    if (s.size() <= maxBytes) return;
+    constexpr std::string_view kEllipsis = "\xE2\x80\xA6";  // … (U+2026)
+    std::size_t n = maxBytes - kEllipsis.size();
+    while (n > 0 && (static_cast<unsigned char>(s[n]) & 0xC0) == 0x80) --n;
+    s.resize(n);
+    s += kEllipsis;
+}
+
+// Opens a file from Data\SKSE\Plugins: relative to the working directory first (the
+// game root), then next to the DLL in case the game was started from elsewhere.
+static std::ifstream OpenPluginFile(std::wstring_view fileName) {
+    std::ifstream file(std::filesystem::path(L"Data\\SKSE\\Plugins") / fileName);
+    if (file) return file;
+    wchar_t buf[MAX_PATH] = {};
+    GetModuleFileNameW(reinterpret_cast<HMODULE>(&__ImageBase), buf, MAX_PATH);
+    return std::ifstream(std::filesystem::path(buf).parent_path() / fileName);
+}
+
 static std::string BuildPosition(RE::PlayerCharacter* player) {
     auto* ws   = player->GetWorldspace();
     auto* loc  = player->GetCurrentLocation();
@@ -123,17 +159,18 @@ static std::string BuildPosition(RE::PlayerCharacter* player) {
 static std::string BuildActiveQuest(RE::PlayerCharacter* player) {
     if (REL::Module::IsVR()) return "";  // objectives not mapped for VR
 
-    // objectives sits at 0x580 from PlayerCharacter* in SE/older AE,
-    // shifted +8 to 0x588 for AE 1.6.629+ (PLAYER_RUNTIME_DATA base moves from 0x3D8 → 0x3E0)
-    auto& objectives = REL::RelocateMemberIfNewer<RE::BSTArray<RE::BGSInstancedQuestObjective>>(
-        SKSE::RUNTIME_SSE_1_6_629, player, 0x580, 0x588);
+    // Accessor handles the base shifts at AE 1.6.629 and 1.7.99.
+    auto& objectives = player->GetPlayerRuntimeData().objectives;
 
+    // Prefer quests the player marked active in the journal; break ties by priority.
     RE::TESQuest* best = nullptr;
     for (const auto& instObj : objectives) {
         if (instObj.InstanceState != RE::QUEST_OBJECTIVE_STATE::kDisplayed) continue;
         auto* quest = instObj.Objective ? instObj.Objective->ownerQuest : nullptr;
         if (!quest) continue;
-        if (!best || quest->data.priority > best->data.priority)
+        if (!best ||
+            (quest->IsActive() && !best->IsActive()) ||
+            (quest->IsActive() == best->IsActive() && quest->data.priority > best->data.priority))
             best = quest;
     }
     return best ? SafeStr(best->GetFullName()) : "";
@@ -209,22 +246,74 @@ static int GetTotalBounty() {
     return total;
 }
 
-void SendPresence(const char* state, const char* details) {
-    if (!g_core) return;
+// Re-reads the player's combat state into g_combatTarget; returns true if it changed.
+// Polled as well as event-driven: no event fires for the player when their target
+// dies or they switch to another enemy.
+static bool UpdateCombatTarget(RE::PlayerCharacter* player) {
+    std::string next;
+    if (g_config.show_combat && player->IsInCombat()) {
+        if (auto target = player->GetActorRuntimeData().currentCombatTarget.get()) {
+            std::string name = SafeStr(target->GetName());
+            next = name.empty() ? Locale("combat_no_target")
+                                : FormatWithName(Locale("combat_fighting"), name);
+        } else {
+            // currentCombatTarget is briefly null while switching targets — keep existing name
+            next = g_combatTarget.empty() ? Locale("combat_no_target") : g_combatTarget;
+        }
+    }
+    if (next == g_combatTarget) return false;
+    g_combatTarget = std::move(next);
+    SKSE::log::info("Combat: '{}'", g_combatTarget);
+    return true;
+}
+
+// ---- Discord dispatch -------------------------------------------------------
+// Updates are deduplicated and spaced kMinSendInterval apart so bursts (combat
+// events, fast-forwarded time while waiting) don't hit Discord's rate limit and
+// drop the final state. FlushPresence() runs every 100 ms and sends the latest
+// queued update once the interval has passed.
+
+struct Presence { std::string state, details; };
+std::optional<Presence>               g_pendingPresence;
+Presence                              g_sentPresence;
+std::chrono::steady_clock::time_point g_lastSend{};
+
+static void FlushPresence() {
+    if (!g_core || !g_pendingPresence) return;
+    const auto now = std::chrono::steady_clock::now();
+    if (now - g_lastSend < kMinSendInterval) return;
+
+    g_sentPresence = std::move(*g_pendingPresence);
+    g_pendingPresence.reset();
+    g_lastSend = now;
 
     discord::Activity activity{};
-    if (state   && *state)   activity.SetState(state);
-    if (details && *details) activity.SetDetails(details);
+    if (!g_sentPresence.state.empty())   activity.SetState(g_sentPresence.state.c_str());
+    if (!g_sentPresence.details.empty()) activity.SetDetails(g_sentPresence.details.c_str());
     activity.GetTimestamps().SetStart(g_startTime);
     activity.GetAssets().SetLargeImage(kLargeImageKey);
     activity.GetAssets().SetLargeText(kLargeImageText);
 
     g_core->ActivityManager().UpdateActivity(activity, [](discord::Result r) {
-        if (r != discord::Result::Ok)
+        if (r != discord::Result::Ok) {
             SKSE::log::error("Discord: UpdateActivity failed (result={})", static_cast<int>(r));
-        else
+            g_sentPresence = {};  // don't let dedup suppress a retry of the same text
+        } else {
             SKSE::log::info("Presence updated.");
+        }
     });
+}
+
+void SendPresence(std::string state, std::string details) {
+    if (!g_core) return;
+    TruncateUtf8(state, kMaxFieldBytes);
+    TruncateUtf8(details, kMaxFieldBytes);
+    if (state == g_sentPresence.state && details == g_sentPresence.details) {
+        g_pendingPresence.reset();  // a queued update would only overwrite this with stale text
+        return;
+    }
+    g_pendingPresence = Presence{std::move(state), std::move(details)};
+    FlushPresence();
 }
 
 void RefreshPosition(const char* trigger = nullptr) {
@@ -239,7 +328,6 @@ void RefreshPosition(const char* trigger = nullptr) {
 
     const bool fallback = g_config.show_location && position.empty() && !g_lastPosition.empty();
     const std::string& display = fallback ? g_lastPosition : position;
-    std::string state = display;
 
     std::string movement    = BuildMovement(player);
     std::string timeWeather = BuildTimeWeather(player);
@@ -263,21 +351,19 @@ void RefreshPosition(const char* trigger = nullptr) {
     else if (g_config.show_quest)
         suffix = BuildActiveQuest(player);
 
-    if (!suffix.empty())
-        state = state.empty() ? suffix : state + kSeparator + suffix;
-    if (!timeWeather.empty())
-        state = state.empty() ? timeWeather : state + kSeparator + timeWeather;
+    std::string state = Join(display, suffix);
+    // Time/weather is the least important part — drop it rather than truncate the rest.
+    if (std::string full = Join(state, timeWeather); full.size() <= kMaxFieldBytes || state.empty())
+        state = std::move(full);
 
     std::string details = g_config.show_player_info ? BuildPlayerInfo(player) : "";
-    if (bounty > 0) {
-        std::string wanted = FormatPlaceholder(Locale("wanted"), "{gold}", std::to_string(bounty));
-        details = details.empty() ? wanted : details + kSeparator + wanted;
-    }
+    if (bounty > 0)
+        details = Join(details, FormatPlaceholder(Locale("wanted"), "{gold}", std::to_string(bounty)));
 
     SKSE::log::info("[{}] player='{}' location='{}' suffix='{}' extra='{}'{}",
         trigger ? trigger : "refresh", details, display, suffix, timeWeather,
         fallback ? " [fallback]" : "");
-    SendPresence(state.c_str(), details.c_str());
+    SendPresence(std::move(state), std::move(details));
 }
 
 void DeferredRefresh(int ticks) {
@@ -290,16 +376,15 @@ void DeferredRefresh(int ticks) {
 }
 
 void TransitionTo(State next) {
-    State prev = g_state;
-    g_state = next;
-    switch (g_state) {
+    State prev = g_state.exchange(next);
+    switch (next) {
     case State::MainMenu:
         SKSE::log::info("State -> MainMenu");
-        SendPresence(Locale("main_menu").c_str(), nullptr);
+        SendPresence(Locale("main_menu"), {});
         break;
     case State::EditingCharacter:
         SKSE::log::info("State -> EditingCharacter");
-        SendPresence(Locale("editing_character").c_str(), nullptr);
+        SendPresence(Locale("editing_character"), {});
         break;
     case State::Playing:
         SKSE::log::info("State -> Playing");
@@ -381,7 +466,8 @@ static void OnCraftingMenu(bool opening) {
                     }
                     if (furn) {
                         using BT = RE::TESFurniture::WorkBenchData::BenchType;
-                        switch (furn->workBenchData.benchType.get()) {
+                        const auto bench = furn->workBenchData.benchType.get();
+                        switch (bench) {
                         case BT::kAlchemy:
                         case BT::kAlchemyExperiment:
                             activity = Locale("crafting_brewing");    break;
@@ -389,9 +475,15 @@ static void OnCraftingMenu(bool opening) {
                         case BT::kEnchantingExperiment:
                             activity = Locale("crafting_enchanting"); break;
                         case BT::kCreateObject:
-                            activity = Locale("crafting_other");      break;
+                            // Forges share kCreateObject with smelters, tanning racks and
+                            // cooking pots — only the workbench keyword tells them apart.
+                            if (!furn->HasKeywordString("CraftingSmithingForge") &&
+                                !furn->HasKeywordString("CraftingSmithingSkyforge"))
+                                activity = Locale("crafting_other");
+                            break;
                         default: break;  // kSmithingWeapon, kSmithingArmor
                         }
+                        SKSE::log::info("Crafting: benchType={}", static_cast<int>(bench));
                     }
                 }
             }
@@ -536,7 +628,9 @@ public:
         if (!ev) return RE::BSEventNotifyControl::kContinue;
         if (g_state == State::Playing &&
             ev->actor.get() == RE::PlayerCharacter::GetSingleton())
-            RefreshPosition("location-change");
+            SKSE::GetTaskInterface()->AddTask([]() {
+                if (g_state == State::Playing) RefreshPosition("location-change");
+            });
         return RE::BSEventNotifyControl::kContinue;
     }
 };
@@ -547,10 +641,12 @@ public:
         const RE::TESCellFullyLoadedEvent* ev,
         RE::BSTEventSource<RE::TESCellFullyLoadedEvent>*) override
     {
-        if (!ev) return RE::BSEventNotifyControl::kContinue;
-        auto* player = RE::PlayerCharacter::GetSingleton();
-        if (g_state == State::Playing && player && player->GetParentCell() == ev->cell)
-            RefreshPosition("cell-loaded");
+        if (!ev || g_state != State::Playing) return RE::BSEventNotifyControl::kContinue;
+        SKSE::GetTaskInterface()->AddTask([cell = ev->cell]() {
+            auto* player = RE::PlayerCharacter::GetSingleton();
+            if (g_state == State::Playing && player && player->GetParentCell() == cell)
+                RefreshPosition("cell-loaded");
+        });
         return RE::BSEventNotifyControl::kContinue;
     }
 };
@@ -596,9 +692,8 @@ public:
         bool targetIsPlayer = ev->targetActor && ev->targetActor->IsPlayerRef();
         bool involvesPlayer = actorIsPlayer || targetIsPlayer;
         // kNone events not involving the player may signal that the player also exited
-        // combat — only trigger if we're currently showing combat to avoid spam.
-        bool mayEndCombat = ev->newState.get() == RE::ACTOR_COMBAT_STATE::kNone
-                            && !g_combatTarget.empty();
+        // combat. The task below only refreshes when the combat text actually changes.
+        bool mayEndCombat = ev->newState.get() == RE::ACTOR_COMBAT_STATE::kNone;
         if (!involvesPlayer && !mayEndCombat)
             return RE::BSEventNotifyControl::kContinue;
 
@@ -606,22 +701,8 @@ public:
         SKSE::GetTaskInterface()->AddTask([]() {
             auto* player = RE::PlayerCharacter::GetSingleton();
             if (!player || g_state != State::Playing) return;
-
-            if (player->IsInCombat()) {
-                if (auto target = player->GetActorRuntimeData().currentCombatTarget.get()) {
-                    std::string name = SafeStr(target->GetName());
-                    g_combatTarget = name.empty() ? Locale("combat_no_target")
-                                                  : FormatWithName(Locale("combat_fighting"), name);
-                } else if (g_combatTarget.empty()) {
-                    g_combatTarget = Locale("combat_no_target");
-                }
-                // currentCombatTarget temporarily null — keep existing name
-            } else {
-                g_combatTarget.clear();
-            }
-
-            SKSE::log::info("Combat: '{}'", g_combatTarget);
-            RefreshPosition("combat");
+            if (UpdateCombatTarget(player))
+                RefreshPosition("combat");
         });
         return RE::BSEventNotifyControl::kContinue;
     }
@@ -685,16 +766,17 @@ DeathSink          g_deathSink;
 SleepStartSink     g_sleepStartSink;
 SleepStopSink      g_sleepStopSink;
 
-// Detects changes in polled state (movement/time/weather/bounty) that have no
-// engine events. Runs on the game thread every ~2 s.
+// Detects changes in polled state (movement/time/weather/bounty/combat target) that
+// have no reliable engine events. Runs on the game thread every ~2 s.
 static void PollGameState() {
     if (g_state != State::Playing) return;
     auto* player = RE::PlayerCharacter::GetSingleton();
     if (!player) return;
 
+    const bool combatChanged = UpdateCombatTarget(player);
     std::string sig = BuildMovement(player) + '\x1F' + BuildTimeWeather(player)
                     + '\x1F' + std::to_string(GetTotalBounty());
-    if (sig != g_pollSignature)
+    if (combatChanged || sig != g_pollSignature)
         RefreshPosition("poll");  // updates g_pollSignature itself
 }
 
@@ -710,6 +792,7 @@ static void StartCallbackThread() {
             SKSE::GetTaskInterface()->AddTask([poll]() {
                 if (g_core) g_core->RunCallbacks();
                 if (poll) PollGameState();
+                FlushPresence();
             });
         }
     }).detach();
@@ -719,7 +802,8 @@ void InitDiscord() {
     g_startTime = static_cast<int64_t>(std::time(nullptr));
     discord::Result result;
     try {
-        result = discord::Core::Create(kAppId, DiscordCreateFlags_Default, &g_core);
+        // NoRequireDiscord: with Default the SDK closes the game when Discord isn't running.
+        result = discord::Core::Create(kAppId, DiscordCreateFlags_NoRequireDiscord, &g_core);
     } catch (...) {
         // discord_game_sdk.dll not found — delay-load threw; run without presence.
         SKSE::log::warn("Discord: discord_game_sdk.dll not found — presence disabled.");
@@ -741,7 +825,7 @@ void InitDiscord() {
 } // anonymous namespace
 
 void LoadConfig() {
-    std::ifstream file(R"(Data\SKSE\Plugins\DragonbornPresenceConfig.json)");
+    auto file = OpenPluginFile(L"DragonbornPresenceConfig.json");
     if (!file) return;
     try {
         auto j = nlohmann::json::parse(file);
@@ -773,7 +857,7 @@ void LoadConfig() {
 }
 
 void SetLocale() {
-    std::ifstream file(R"(Data\SKSE\Plugins\DragonbornPresenceLocale.json)");
+    auto file = OpenPluginFile(L"DragonbornPresenceLocale.json");
     if (!file) return;
 
     try {

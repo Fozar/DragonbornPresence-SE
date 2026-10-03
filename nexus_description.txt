@@ -12,10 +12,10 @@
 [font=Tahoma][list]
 [*][b]Location[/b] — worldspace and named location, e.g. [i]Skyrim: Riverwood[/i] or [i]Nightcaller Temple[/i]. Updates immediately when you cross a location boundary or enter a new cell.
 [*][b]Character[/b] — name, race, and level, e.g. [i]Dovahkiin - Nord (42)[/i]. Updates correctly after character creation and name changes.
-[*][b]Active quest[/b] — name of your current tracked quest, shown alongside the location, e.g. [i]Skyrim: Whiterun · Bleak Falls Barrow[/i].
+[*][b]Active quest[/b] — name of the quest you set as active in the journal, shown alongside the location, e.g. [i]Skyrim: Whiterun · Bleak Falls Barrow[/i].
 [*][b]Combat[/b] — while fighting, the quest is replaced with the enemy's name, e.g. [i]Skyrim: Helgen · In combat with Alduin[/i]. Reverts to the quest when combat ends.
 [*][b]NPC dialogue[/b] — while talking to someone, shows their name, e.g. [i]Skyrim: Whiterun · Talking to Farengar Secret-Fire[/i]. Reverts when the conversation ends.
-[*][b]Crafting[/b] — while at a crafting station, shows the activity: [i]Smithing[/i] (forge, workbench, tanning rack, smelter), [i]Brewing[/i] (alchemy lab), [i]Enchanting[/i] (enchanting table), or [i]Crafting[/i] (cooking pots, Hearthfire stations, etc.). Reverts to the active quest when the menu closes.
+[*][b]Crafting[/b] — while at a crafting station, shows the activity: [i]Smithing[/i] (forge, grindstone, workbench), [i]Brewing[/i] (alchemy lab), [i]Enchanting[/i] (enchanting table), or [i]Crafting[/i] (smelter, tanning rack, cooking pot, Hearthfire stations, etc.). Reverts to the active quest when the menu closes.
 [*][b]In-game time & weather[/b] — the game clock is shown after the location, e.g. [i]Skyrim: Whiterun · 14:30 🌧[/i], with a rain or snow marker while outside.
 [*][b]Activities[/b] — [i]Reading <book title>[/i], [i]Trading with <merchant>[/i], [i]Pickpocketing <victim>[/i], [i]Picking a lock[/i], [i]Training[/i], [i]Sleeping[/i], [i]Waiting[/i].
 [*][b]Movement[/b] — [i]Sneaking[/i], [i]Swimming[/i], or [i]Riding <horse name>[/i] when nothing more important is happening.
@@ -84,16 +84,16 @@ No .esp. No plugins to enable. Just drop and play.
 [font=Tahoma][size=4][b]— Requirements —[/b][/size][/font]
 
 [font=Tahoma][list]
-[*]SKSE64 (any runtime — SE, AE, or newer)
-[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/32444]Address Library for SKSE Plugins[/url]
-[*]Discord Desktop
+[*]SKSE64 matching your game version (SE 1.5.97, AE 1.6.x, or the 1.7.x update)
+[*][url=https://www.nexusmods.com/skyrimspecialedition/mods/32444]Address Library for SKSE Plugins[/url] — make sure it includes your game version (e.g. [font=Courier New]versionlib-1-7-104-0.bin[/font])
+[*]Discord Desktop — optional: if Discord isn't running, the game plays normally and the mod simply stays inactive
 [/list][/font]
 
 [font=Tahoma][size=4][b]— Credits —[/b][/size][/font]
 
 [font=Tahoma][list]
 [*]SKSE Team
-[*]CommonLibSSE-NG
+[*]CommonLibSSE-NG (alandtse fork)
 [*]Discord Game SDK
 [/list][/font]
 
@@ -109,7 +109,7 @@ No .esp. No plugins to enable. Just drop and play.
 The old version shipped a Papyrus script and a plugin file to track the player's location. Version 2.0 uses native C++ SKSE event hooks ([font=Courier New]TESActorLocationChangeEvent[/font], [font=Courier New]TESCellFullyLoadedEvent[/font]) — the .esp is gone entirely. Fewer files, no load order concerns, no script overhead.
 
 [b]Any runtime[/b]
-Version 1.x only worked on a specific Skyrim runtime (1.5.97). Version 2.0 uses the address library and runs on any version of Skyrim SE or AE without changes.
+Version 1.x only worked on a specific Skyrim runtime (1.5.97). Version 2.0 uses the address library and runs on Skyrim SE and AE. Version 2.6.0 adds support for the 1.7.x game update, which broke earlier versions.
 
 [b]Discord Game SDK instead of discord-rpc[/b]
 Replaced the archived [font=Courier New]discord-rpc[/font] library with the current Discord Game SDK. More reliable connection, proper async callbacks, no stale presence.

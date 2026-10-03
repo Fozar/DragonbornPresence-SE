@@ -14,7 +14,7 @@ set(CMAKE_SKIP_INSTALL_RULES TRUE)
 FetchContent_Declare(
     fmt
     GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-    GIT_TAG 10.2.1
+    GIT_TAG 12.1.0
     GIT_SHALLOW TRUE
     OVERRIDE_FIND_PACKAGE
 )
@@ -24,7 +24,7 @@ FetchContent_MakeAvailable(fmt)
 FetchContent_Declare(
     spdlog
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
-    GIT_TAG v1.13.0
+    GIT_TAG v1.16.0
     GIT_SHALLOW TRUE
     OVERRIDE_FIND_PACKAGE
 )
@@ -46,17 +46,36 @@ set(RAPIDCSV_INCLUDE_DIRS "${rapidcsv_SOURCE_DIR}/src" CACHE PATH "" FORCE)
 FetchContent_Declare(
     nlohmann_json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.3
+    GIT_TAG v3.12.0
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(nlohmann_json)
 
-# CommonLibSSE-NG — find_package(fmt/spdlog) intercepted above, tests disabled
+# DirectXTK — CommonLibSSE-NG 10.x only includes its SimpleMath.h header, so expose the
+# headers as an INTERFACE target instead of building the library (its HLSL shader step
+# is slow and fragile). SOURCE_SUBDIR points nowhere so DirectXTK's own CMake never runs;
+# OVERRIDE_FIND_PACKAGE satisfies CommonLib's find_package(directxtk).
+FetchContent_Declare(
+    directxtk
+    GIT_REPOSITORY https://github.com/microsoft/DirectXTK.git
+    GIT_TAG oct2025
+    GIT_SHALLOW TRUE
+    SOURCE_SUBDIR _headers_only
+    OVERRIDE_FIND_PACKAGE
+)
+FetchContent_MakeAvailable(directxtk)
+add_library(DirectXTKHeaders INTERFACE)
+target_include_directories(DirectXTKHeaders INTERFACE "${directxtk_SOURCE_DIR}/Inc")
+add_library(Microsoft::DirectXTK ALIAS DirectXTKHeaders)
+
+# CommonLibSSE-NG — maintained fork (alandtse/CommonLibVR, "ng" line). The original
+# CharmedBaryon repo stopped at 3.7.0 and treats runtime 1.7.x as SE (wrong address
+# library file, wrong struct layouts). find_package(fmt/spdlog/directxtk) intercepted above.
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(
     CommonLibSSE
-    GIT_REPOSITORY https://github.com/CharmedBaryon/CommonLibSSE-NG.git
-    GIT_TAG v3.7.0
+    GIT_REPOSITORY https://github.com/alandtse/CommonLibVR.git
+    GIT_TAG v10.1.0
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(CommonLibSSE)
@@ -108,6 +127,9 @@ target_include_directories(DragonbornPresence PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
     "${rapidcsv_SOURCE_DIR}/src"
 )
+
+# <Windows.h> is included alongside RE headers; its min/max macros break them
+target_compile_definitions(DragonbornPresence PRIVATE NOMINMAX)
 
 target_precompile_headers(DragonbornPresence PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/pch.h"
