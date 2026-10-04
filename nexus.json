@@ -1,0 +1,15 @@
+{
+  "game": "skyrimspecialedition",
+  "mod": 25287,
+  "mod_uid": "7318624297671",
+  "file_id": "2813788",
+  "archive_previous": true,
+  "name": "Dragonborn Presence",
+  "category": "main",
+  "description": "Discord Rich Presence SKSE plugin: shows your location, character, active quest and what you are doing in Skyrim right now.",
+  "version": {"file": "CMakeLists.txt", "regex": "^project[(]DragonbornPresence VERSION ([0-9.]+)"},
+  "changelog": "CHANGELOG.md",
+  "archive": "cmake-build-release-cli/DragonbornPresence.zip",
+  "build": "CLion: Release|x64 (post-build packs the zip)",
+  "page_text": "nexus_description.txt"
+}
