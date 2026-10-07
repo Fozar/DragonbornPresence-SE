@@ -1,0 +1,64 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Mod logo for the Nexus description header: a chat bubble with the night sky of the presence icons
+     and the game's dragon. Transparent, logo.html#<size> (default 512). See README.md -->
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; } svg { display: block; }
+  /* glyph classes, as in presence/presence.html */
+  .glyph { fill: var(--fg); } .glyph .d { fill: var(--bg); }
+  .glyph .ws { fill: none; stroke: var(--fg); } .glyph .ds { fill: none; stroke: var(--bg); }
+</style>
+</head><body>
+<script src="presence/glyphs.js"></script>
+<script>
+const S = +location.hash.slice(1) || 512;
+document.body.style.width = document.body.style.height = S + 'px';
+
+// Bubble in a 512 box: rounded square with the tail growing out of the bottom-right edge.
+const BUBBLE = `M150 52 H362 A104 104 0 0 1 466 156 V318 C466 378 470 428 484 466
+  C448 446 414 416 366 410 H150 A104 104 0 0 1 46 306 V156 A104 104 0 0 1 150 52 Z`;
+
+let seed = 11;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+let sky = '';
+for (let i = 0; i < 46; i++)
+  sky += `<circle cx="${46 + rnd() * 420}" cy="${52 + rnd() * 200}" r="${(.5 + rnd() * 1.3) * 2}" fill="#e6e9ff" opacity="${(.2 + rnd() * .5).toFixed(2)}"/>`;
+const ridge = (base, amp, n, color) => {
+  let d = `M0 512`;
+  for (let k = 0; k <= n; k++) d += ` L${k * 512 / n} ${base - amp * (.3 + .7 * rnd())}`;
+  sky += `<path d="${d} L512 512Z" fill="${color}"/>`;
+};
+ridge(338, 74, 6, '#232867'); ridge(376, 44, 9, '#161a47'); ridge(412, 26, 12, '#0d0f2b');
+
+const g = GAME_GLYPHS.SkyrimLogo, k = 236 / g.h;   // dragon ~2/3 of the bubble's height
+document.body.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="-24 -24 560 560">
+<defs>
+  <clipPath id="clip"><path d="${BUBBLE}"/></clipPath>
+  <linearGradient id="sky" x1="0" y1="52" x2="0" y2="462" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#0b0d26"/><stop offset=".45" stop-color="#1e2360"/><stop offset=".78" stop-color="#4650c4"/><stop offset="1" stop-color="#2a2f78"/></linearGradient>
+  <radialGradient id="glow" cx="256" cy="226" r="230" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#5865f2" stop-opacity=".6"/><stop offset="1" stop-color="#5865f2" stop-opacity="0"/></radialGradient>
+  <linearGradient id="sheen" x1="0" y1="52" x2="0" y2="300" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#fff" stop-opacity=".12"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="rim" x1="0" y1="52" x2="0" y2="462" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#b9c0ff" stop-opacity=".9"/><stop offset=".55" stop-color="#7983ff" stop-opacity=".55"/><stop offset="1" stop-color="#5865f2" stop-opacity=".8"/></linearGradient>
+  <filter id="sh" x="-40%" y="-40%" width="180%" height="180%">
+    <feDropShadow dx="0" dy="6" stdDeviation="9" flood-color="#05061a" flood-opacity=".85"/>
+    <feDropShadow dx="0" dy="0" stdDeviation="16" flood-color="#8b95ff" flood-opacity=".6"/></filter>
+  <filter id="outer" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity=".45"/>
+    <feDropShadow dx="0" dy="0" stdDeviation="10" flood-color="#5865f2" flood-opacity=".45"/></filter>
+</defs>
+<path d="${BUBBLE}" fill="#1a1e52" filter="url(#outer)"/>
+<g clip-path="url(#clip)">
+  <rect x="0" y="0" width="512" height="512" fill="url(#sky)"/>
+  ${sky}
+  <rect x="0" y="0" width="512" height="512" fill="url(#glow)"/>
+  <rect x="0" y="0" width="512" height="512" fill="url(#sheen)"/>
+</g>
+<path d="${BUBBLE}" fill="none" stroke="url(#rim)" stroke-width="6"/>
+<g filter="url(#sh)">
+  <g class="glyph" style="--fg:#fff;--bg:#1a1e52" transform="translate(256 228) scale(${k}) translate(${-g.w / 2} ${-g.h / 2})">${g.svg}</g>
+</g>
+</svg>`;
+</script></body></html>

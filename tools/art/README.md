@@ -11,6 +11,9 @@ Main colour: Discord blurple `#5865f2`. `logo.png` is the mod logo from the Nexu
 Google Fonts; without network the page falls back to Georgia / Segoe UI.
 Rendered results: `docs/media/cover.png`, `docs/media/banner-1300x372.png` (+ `-2600x744`).
 The card's presence images are the plugin's own icons from `../../assets/icons` (render those first).
+- `logo.html` — mod logo for the top of the Nexus description (chat bubble with the presence-icon sky and the
+  game's dragon), transparent 512×512 → `docs/media/logo.png`: same command with `--window-size=512,512
+  --default-background-color=00000000` (`logo.html#<size>` for another size). `logo.png` is the old flat logo.
 - `promo-icons.html` — 1920×1080 mod page image for the icons (sample cards + a selection of icons) → `docs/media/promo-icons.png`,
   same command as the cover.
 
