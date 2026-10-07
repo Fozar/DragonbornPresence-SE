@@ -10,6 +10,9 @@ Main colour: Discord blurple `#5865f2`. `logo.png` is the mod logo from the Nexu
 `--allow-file-access-from-files` is needed for the logo mask. Fonts (Cinzel, Cormorant Garamond, Noto Sans) come from
 Google Fonts; without network the page falls back to Georgia / Segoe UI.
 Rendered results: `docs/media/cover.png`, `docs/media/banner-1300x372.png` (+ `-2600x744`).
+The card's presence images are the plugin's own icons from `../../assets/icons` (render those first).
+- `promo-icons.html` — 1920×1080 mod page image for the icons (sample cards + a selection of icons) → `docs/media/promo-icons.png`,
+  same command as the cover.
 
 # Discord presence icons (`presence/`)
 

@@ -1,0 +1,124 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Mod page image for the 2.7.0 icons, 1920x1080. Uses the rendered PNGs from ../../assets/icons. See README.md -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Noto+Sans:wght@400;600;700&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #0d0f1f; }
+  #stage { position: relative; width: 1920px; height: 1080px; }
+  svg#bg { position: absolute; left: 0; top: 0; }
+  .title { font-family: 'Cinzel', Georgia, serif; font-weight: 700; letter-spacing: 0.08em; }
+  .small { font-family: 'Noto Sans', 'Segoe UI', sans-serif; font-weight: 600; letter-spacing: 0.3em; }
+  .sub { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 500; }
+
+  .head { position: absolute; left: 0; right: 0; top: 70px; text-align: center; color: #f4f5ff; }
+  .head .small { font-size: 20px; color: #9aa3ff; }
+  .head .title { font-size: 76px; margin-top: 14px; text-shadow: 0 6px 30px rgba(0,0,0,.5); }
+  .head .rule { width: 520px; height: 1.5px; margin: 18px auto 16px;
+                background: linear-gradient(90deg, transparent, #8b95ff, transparent); }
+  .head .sub { font-size: 36px; color: #d4d8ff; }
+
+  /* Discord activity cards */
+  .cards { position: absolute; top: 390px; left: 0; right: 0; display: flex; justify-content: center; gap: 36px; }
+  .act { width: 560px; box-sizing: border-box; background: #232428; border-radius: 14px; padding: 20px 22px;
+         font-family: 'Noto Sans', 'Segoe UI', sans-serif; color: #f2f3f5;
+         box-shadow: 0 24px 60px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.05), 0 0 90px rgba(88,101,242,.3); }
+  .act h4 { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: .04em; color: #b5bac1; }
+  .row { display: flex; gap: 18px; align-items: center; }
+  .pic { position: relative; width: 120px; height: 120px; flex: none; }
+  .pic .l { width: 120px; height: 120px; border-radius: 10px; }
+  .pic .s { position: absolute; right: -8px; bottom: -8px; width: 42px; height: 42px; border-radius: 50%;
+            box-shadow: 0 0 0 5px #232428; }
+  .lines { min-width: 0; font-size: 17px; line-height: 1.5; }
+  .lines div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #dbdee1; }
+  .lines .game { font-weight: 700; color: #f2f3f5; }
+  .lines .elapsed { color: #23a55a; font-weight: 600; }
+
+  /* sample icons */
+  .strip { position: absolute; left: 0; right: 0; display: flex; justify-content: center; gap: 30px;
+           font-family: 'Noto Sans', 'Segoe UI', sans-serif; font-size: 15px; font-weight: 600; color: #c9cdff; }
+  .strip figure { margin: 0; text-align: center; }
+  .strip img { display: block; margin: 0 auto 10px; box-shadow: 0 12px 30px rgba(0,0,0,.5); }
+  .strip.locs { top: 700px; } .strip.locs img { width: 112px; height: 112px; border-radius: 14px; }
+  .strip.acts { top: 900px; gap: 34px; } .strip.acts img { width: 72px; height: 72px; border-radius: 50%; }
+</style></head>
+<body><div id="stage">
+<svg id="bg" xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080"></svg>
+
+<div class="head">
+  <div class="small">NEW IN 2.7 · LOCATION &amp; ACTIVITY ICONS</div>
+  <div class="title">SEE WHERE THEY ROAM</div>
+  <div class="rule"></div>
+  <div class="sub">Hold emblems and map markers straight from the game.</div>
+</div>
+
+<div class="cards" id="cards"></div>
+<div class="strip locs" id="locs"></div>
+<div class="strip acts" id="acts"></div>
+</div>
+<script>
+const ICONS = '../../assets/icons/';
+const CARDS = [
+  ['whiterun',    'dialogue', 'Skyrim: Whiterun · Talking to Farengar'],
+  ['nordic_ruin', 'combat',   'Bleak Falls Barrow · In combat with Draugr'],
+  ['apocrypha',   'reading',  'Apocrypha · Reading Waking Dreams'],
+];
+const LARGE = [['solitude', 'Solitude'], ['windhelm', 'Windhelm'], ['markarth', 'Markarth'], ['riften', 'Riften'],
+  ['cave', 'Cave'], ['dwemer_ruin', 'Dwemer ruin'], ['dragon_lair', 'Dragon lair'], ['giant_camp', 'Giant camp'],
+  ['inn', 'Inn'], ['sovngarde', 'Sovngarde'], ['soul_cairn', 'Soul Cairn']];
+const SMALL = [['smithing', 'Smithing'], ['brewing', 'Brewing'], ['sneaking', 'Sneaking'], ['riding', 'Riding'],
+  ['trading', 'Trading'], ['lockpicking', 'Lockpicking'], ['swimming', 'Swimming'], ['sleeping', 'Sleeping'], ['dead', 'Dead']];
+
+document.getElementById('cards').innerHTML = CARDS.map(([l, s, line]) => `
+  <div class="act"><h4>PLAYING</h4><div class="row">
+    <div class="pic"><img class="l" src="${ICONS}${l}.png"><img class="s" src="${ICONS}${s}.png"></div>
+    <div class="lines"><div class="game">Skyrim Special Edition</div><div>Dovahkiin - Nord (42)</div>
+      <div>${line}</div><div class="elapsed">01:23:45</div></div></div></div>`).join('');
+for (const [id, list] of [["locs", LARGE], ["acts", SMALL]])
+  document.getElementById(id).innerHTML = list.map(([k, name]) => `<figure><img src="${ICONS}${k}.png">${name}</figure>`).join('');
+
+// background: night sky, ridges, mist and snow, as on the cover (art.html)
+const W = 1920, H = 1080, NS = 'http://www.w3.org/2000/svg', svg = document.getElementById('bg');
+function el(tag, attrs, parent = svg) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) e.setAttribute(k, attrs[k]);
+  parent.appendChild(e); return e;
+}
+let seed = 11;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+el('defs', {}).innerHTML = `
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#07081a"/><stop offset=".35" stop-color="#1a1e52"/><stop offset=".6" stop-color="#4650c4"/><stop offset="1" stop-color="#2a2f78"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="960" cy="500" r="1050" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#5865f2" stop-opacity=".4"/><stop offset=".5" stop-color="#5865f2" stop-opacity=".1"/><stop offset="1" stop-color="#5865f2" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="mist" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="${2 / W} ${7 / W}" numOctaves="4" seed="9"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 .62  0 0 0 0 .66  0 0 0 0 1  0 0 0 .6 -.2"/>
+  </filter>
+  <linearGradient id="mistMask" x1="0" y1="0" x2="0" y2="1"><stop offset=".35" stop-color="#fff" stop-opacity="0"/><stop offset=".8" stop-color="#fff" stop-opacity="1"/></linearGradient>
+  <mask id="lower"><rect width="${W}" height="${H}" fill="url(#mistMask)"/></mask>
+  <radialGradient id="vignette" cx="50%" cy="50%" r="78%"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="5"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 .9  0 0 0 0 .92  0 0 0 0 1  0 0 0 .06 0"/>
+  </filter>
+  <filter id="soft" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation=".8"/></filter>`;
+el('rect', { width: W, height: H, fill: 'url(#sky)' });
+for (let i = 0; i < W / 9; i++) el('circle', { cx: rnd() * W, cy: rnd() * H * .5, r: .4 + rnd() * 1.1, fill: '#e6e9ff', opacity: (.15 + rnd() * .5).toFixed(2) });
+function ridge(base, amp, step, color) {
+  let d = `M 0 ${H}`;
+  for (let x = 0; x <= W + step; x += step) d += ` L ${x} ${base - amp * (.35 + .65 * rnd()) * (.6 + .4 * Math.sin(x / W * 5 + base))}`;
+  el('path', { d: d + ` L ${W} ${H} Z`, fill: color });
+}
+ridge(H * .5, H * .2, W / 14, '#232867');
+ridge(H * .6, H * .13, W / 22, '#161a47');
+ridge(H * .74, H * .08, W / 30, '#0d0f2b');
+el('rect', { width: W, height: H, filter: 'url(#mist)', mask: 'url(#lower)', opacity: .4 });
+el('rect', { width: W, height: H, fill: 'url(#glow)' });
+const sg = el('g', { filter: 'url(#soft)' });
+for (let i = 0; i < 200; i++) el('circle', { cx: rnd() * W, cy: rnd() * H, r: (.6 + rnd() * 1.8) * 1.4, fill: '#eef0ff', opacity: (.15 + rnd() * .45).toFixed(2) }, sg);
+el('rect', { width: W, height: H, fill: 'url(#vignette)' });
+el('rect', { width: W, height: H, filter: 'url(#grain)' });
+</script>
+</body></html>

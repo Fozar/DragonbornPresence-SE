@@ -28,9 +28,11 @@
   .act { margin-top: 20px; background: #111214; border-radius: 10px; padding: 18px; }
   .act h4 { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #b5bac1; }
   .row { display: flex; gap: 18px; align-items: center; }
-  .large { width: 112px; height: 112px; border-radius: 10px; flex: none; position: relative;
-           background: radial-gradient(circle at 50% 35%, #6d78f5, #4752c4); }
-  .large i { position: absolute; inset: 12%; background: #fff; -webkit-mask: url(logo.png) center / contain no-repeat; mask: url(logo.png) center / contain no-repeat; }
+  /* presence images: the plugin's own icons (../../assets/icons) */
+  .large { width: 112px; height: 112px; flex: none; position: relative; }
+  .large .l { width: 112px; height: 112px; border-radius: 10px; display: block; }
+  .large .s { position: absolute; right: -7px; bottom: -7px; width: 40px; height: 40px; border-radius: 50%;
+              box-shadow: 0 0 0 5px #111214; }
   .lines { min-width: 0; font-size: 17px; line-height: 1.45; }
   .game { font-weight: 700; color: #f2f3f5; }
   .lines div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #dbdee1; }
@@ -48,7 +50,7 @@
     <div class="act">
       <h4>PLAYING</h4>
       <div class="row">
-        <div class="large"><i></i></div>
+        <div class="large"><img class="l" src="../../assets/icons/whiterun.png"><img class="s" src="../../assets/icons/dialogue.png"></div>
         <div class="lines">
           <div class="game">Skyrim Special Edition</div>
           <div>Dovahkiin - Nord (42)</div>
