@@ -18,8 +18,8 @@
   .banner { height: 104px; background: linear-gradient(120deg, #5865f2, #3c45a5); }
   .avatar { position: absolute; left: 24px; top: 50px; width: 104px; height: 104px; border-radius: 50%;
             background: #232428; padding: 7px; box-sizing: border-box; }
-  .avatar .in { width: 100%; height: 100%; border-radius: 50%; background: var(--blurple); position: relative; }
-  .avatar .in i { position: absolute; inset: 16%; background: #fff; -webkit-mask: url(logo.png) center / contain no-repeat; mask: url(logo.png) center / contain no-repeat; }
+  .avatar .in { width: 100%; height: 100%; border-radius: 50%; background: linear-gradient(150deg, #7480ff, #3c45a5); position: relative; }
+  .avatar .in img { position: absolute; left: 6%; top: 7%; width: 88%; height: 88%; } /* the mod logo, logo.html */
   .avatar .dot { position: absolute; right: 4px; bottom: 4px; width: 26px; height: 26px; border-radius: 50%;
                  background: #23a55a; box-shadow: 0 0 0 6px #232428; }
   .body { padding: 62px 24px 24px; }
@@ -43,7 +43,7 @@
 <svg id="bg" xmlns="http://www.w3.org/2000/svg"></svg>
 <div class="card" id="card">
   <div class="banner"></div>
-  <div class="avatar"><div class="in"><i></i></div><div class="dot"></div></div>
+  <div class="avatar"><div class="in"><img src="../../docs/media/logo.png"></div><div class="dot"></div></div>
   <div class="body">
     <div class="name">Dovahkiin</div>
     <div class="tag">dragonborn</div>
