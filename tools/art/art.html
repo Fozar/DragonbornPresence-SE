@@ -1,0 +1,159 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Mod page art. art.html#cover = 1920x1080, art.html#banner = 1300x372 (Nexus header). See README.md -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Cormorant+Garamond:ital,wght@1,500&family=Noto+Sans:wght@400;600;700&display=block" rel="stylesheet">
+<style>
+  :root { --blurple: #5865f2; }
+  html, body { margin: 0; overflow: hidden; background: #0d0f1f; }
+  #stage { position: relative; }
+  svg#bg { position: absolute; left: 0; top: 0; display: block; }
+  .title { font-family: 'Cinzel', Georgia, serif; font-weight: 700; letter-spacing: 0.1em; }
+  .small { font-family: 'Noto Sans', 'Segoe UI', sans-serif; font-weight: 600; letter-spacing: 0.3em; }
+  .sub { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; font-weight: 500; }
+
+  /* Discord-style profile card with the Rich Presence the plugin sends */
+  .card { position: absolute; width: 600px; background: #232428; border-radius: 14px; overflow: hidden;
+          font-family: 'Noto Sans', 'Segoe UI', sans-serif; color: #f2f3f5; transform-origin: 0 0;
+          box-shadow: 0 30px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.05), 0 0 120px rgba(88,101,242,0.35); }
+  .banner { height: 104px; background: linear-gradient(120deg, #5865f2, #3c45a5); }
+  .avatar { position: absolute; left: 24px; top: 50px; width: 104px; height: 104px; border-radius: 50%;
+            background: #232428; padding: 7px; box-sizing: border-box; }
+  .avatar .in { width: 100%; height: 100%; border-radius: 50%; background: var(--blurple); position: relative; }
+  .avatar .in i { position: absolute; inset: 16%; background: #fff; -webkit-mask: url(logo.png) center / contain no-repeat; mask: url(logo.png) center / contain no-repeat; }
+  .avatar .dot { position: absolute; right: 4px; bottom: 4px; width: 26px; height: 26px; border-radius: 50%;
+                 background: #23a55a; box-shadow: 0 0 0 6px #232428; }
+  .body { padding: 62px 24px 24px; }
+  .name { font-size: 26px; font-weight: 700; }
+  .tag { font-size: 16px; color: #b5bac1; margin-top: 2px; }
+  .act { margin-top: 20px; background: #111214; border-radius: 10px; padding: 18px; }
+  .act h4 { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; color: #b5bac1; }
+  .row { display: flex; gap: 18px; align-items: center; }
+  .large { width: 112px; height: 112px; border-radius: 10px; flex: none; position: relative;
+           background: radial-gradient(circle at 50% 35%, #6d78f5, #4752c4); }
+  .large i { position: absolute; inset: 12%; background: #fff; -webkit-mask: url(logo.png) center / contain no-repeat; mask: url(logo.png) center / contain no-repeat; }
+  .lines { min-width: 0; font-size: 17px; line-height: 1.45; }
+  .game { font-weight: 700; color: #f2f3f5; }
+  .lines div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #dbdee1; }
+  .elapsed { color: #23a55a !important; font-weight: 600; }
+</style></head>
+<body>
+<div id="stage">
+<svg id="bg" xmlns="http://www.w3.org/2000/svg"></svg>
+<div class="card" id="card">
+  <div class="banner"></div>
+  <div class="avatar"><div class="in"><i></i></div><div class="dot"></div></div>
+  <div class="body">
+    <div class="name">Dovahkiin</div>
+    <div class="tag">dragonborn</div>
+    <div class="act">
+      <h4>PLAYING</h4>
+      <div class="row">
+        <div class="large"><i></i></div>
+        <div class="lines">
+          <div class="game">Skyrim Special Edition</div>
+          <div>Dovahkiin - Nord (42)</div>
+          <div>Skyrim: Whiterun · Talking to Farengar</div>
+          <div class="elapsed">01:23:45</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+<script>
+const LAYOUTS = {
+  cover:  { W: 1920, H: 1080, card: { x: 170, y: 300, s: 1.0 },
+            text: { x: 1330, label: 20, labelY: 400, name: 92, nameY: [512, 618], lineY: 668, lineW: 250, sub: 40, subY: 732 },
+            ridgeY: 0.62, snow: 220 },
+  banner: { W: 1300, H: 372, card: { x: 70, y: 36, s: 0.6 },
+            text: { x: 850, label: 13, labelY: 112, name: 50, nameY: [172, 232], lineY: 260, lineW: 170, sub: 25, subY: 300 },
+            ridgeY: 0.7, snow: 90 },
+};
+const L = LAYOUTS[location.hash.slice(1)] || LAYOUTS.cover;
+const { W, H } = L;
+for (const e of [document.documentElement, document.body, document.getElementById('stage')]) { e.style.width = W + 'px'; e.style.height = H + 'px'; }
+const card = document.getElementById('card');
+card.style.left = L.card.x + 'px'; card.style.top = L.card.y + 'px'; card.style.transform = `scale(${L.card.s})`;
+
+const NS = 'http://www.w3.org/2000/svg';
+const svg = document.getElementById('bg');
+svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+function el(tag, attrs, parent = svg) {
+  const e = document.createElementNS(NS, tag);
+  for (const k in attrs) k === 'text' ? (e.textContent = attrs[k]) : e.setAttribute(k, attrs[k]);
+  parent.appendChild(e); return e;
+}
+let seed = 3;
+const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+
+const cardCx = L.card.x + 300 * L.card.s, cardCy = L.card.y + 230 * L.card.s;
+el('defs', {}).innerHTML = `
+  <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0" stop-color="#07081a"/><stop offset="${(L.ridgeY - 0.3).toFixed(2)}" stop-color="#1a1e52"/><stop offset="${(L.ridgeY - 0.1).toFixed(2)}" stop-color="#4650c4"/><stop offset="1" stop-color="#2a2f78"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="${cardCx}" cy="${cardCy}" r="${W * 0.55}" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#5865f2" stop-opacity="0.45"/><stop offset="0.5" stop-color="#5865f2" stop-opacity="0.12"/><stop offset="1" stop-color="#5865f2" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="aurora" cx="${W * 0.72}" cy="${H * 0.05}" r="${W * 0.5}" gradientUnits="userSpaceOnUse">
+    <stop offset="0" stop-color="#8b95ff" stop-opacity="0.22"/><stop offset="1" stop-color="#8b95ff" stop-opacity="0"/>
+  </radialGradient>
+  <filter id="mist" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="${2 / W} ${7 / W}" numOctaves="4" seed="9"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0.62  0 0 0 0 0.66  0 0 0 0 1  0 0 0 0.6 -0.2"/>
+  </filter>
+  <linearGradient id="mistMask" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0.35" stop-color="#fff" stop-opacity="0"/><stop offset="0.8" stop-color="#fff" stop-opacity="1"/>
+  </linearGradient>
+  <mask id="lower"><rect width="${W}" height="${H}" fill="url(#mistMask)"/></mask>
+  <radialGradient id="vignette" cx="50%" cy="50%" r="78%">
+    <stop offset="0.6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.6"/>
+  </radialGradient>
+  <filter id="grain" x="0" y="0" width="100%" height="100%">
+    <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="5"/>
+    <feColorMatrix type="matrix" values="0 0 0 0 0.9  0 0 0 0 0.92  0 0 0 0 1  0 0 0 0.06 0"/>
+  </filter>
+  <filter id="soft" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="0.8"/></filter>
+  <linearGradient id="rule" x1="0" x2="1">
+    <stop offset="0" stop-color="#8b95ff" stop-opacity="0"/><stop offset="0.5" stop-color="#8b95ff" stop-opacity="0.9"/><stop offset="1" stop-color="#8b95ff" stop-opacity="0"/>
+  </linearGradient>`;
+
+el('rect', { width: W, height: H, fill: 'url(#sky)' });
+el('rect', { width: W, height: H, fill: 'url(#aurora)' });
+// stars
+for (let i = 0; i < W / 9; i++) el('circle', { cx: rnd() * W, cy: rnd() * H * 0.5, r: 0.4 + rnd() * 1.1, fill: '#e6e9ff', opacity: (0.15 + rnd() * 0.5).toFixed(2) });
+
+// mountain ridges (far -> near), snow caps on the far one
+function ridge(base, amp, step, color, caps) {
+  let d = `M 0 ${H}`, pts = [];
+  for (let x = 0; x <= W + step; x += step) { const y = base - amp * (0.35 + 0.65 * rnd()) * (0.6 + 0.4 * Math.sin(x / W * 5 + base)); pts.push([x, y]); d += ` L ${x} ${y}`; }
+  el('path', { d: d + ` L ${W} ${H} Z`, fill: color });
+  if (caps) for (let i = 1; i < pts.length - 1; i++) {
+    const [x, y] = pts[i], [lx, ly] = pts[i - 1], [rx, ry2] = pts[i + 1];
+    if (!(y < ly && y < ry2) || rnd() > 0.75) continue;
+    const f = 0.22 + rnd() * 0.12, at = (ax, ay, t) => [x + (ax - x) * t, y + (ay - y) * t];
+    const a = at(lx, ly, f), b = at(rx, ry2, f), m1 = at(lx, ly, f * 0.45), m2 = at(rx, ry2, f * 0.55);
+    // cap follows both slopes, jagged lower edge
+    el('path', { d: `M ${x} ${y} L ${b[0]} ${b[1]} L ${m2[0] - 4} ${m2[1] + 6} L ${x + 2} ${y + (b[1] - y) * 0.7} L ${m1[0] + 4} ${m1[1] + 5} L ${a[0]} ${a[1]} Z`, fill: '#c3c9ff', opacity: 0.42 });
+  }
+}
+const ry = H * L.ridgeY;
+ridge(ry - H * 0.08, H * 0.22, W / 14, '#232867', true);
+ridge(ry, H * 0.14, W / 22, '#161a47', false);
+ridge(ry + H * 0.12, H * 0.08, W / 30, '#0d0f2b', false);
+el('rect', { width: W, height: H, filter: 'url(#mist)', mask: 'url(#lower)', opacity: 0.4 });
+el('rect', { width: W, height: H, fill: 'url(#glow)' });
+// snow
+const sg = el('g', { filter: 'url(#soft)' });
+for (let i = 0; i < L.snow; i++) el('circle', { cx: rnd() * W, cy: rnd() * H, r: (0.6 + rnd() * 1.8) * (H / 1080 + 0.4), fill: '#eef0ff', opacity: (0.15 + rnd() * 0.45).toFixed(2) }, sg);
+el('rect', { width: W, height: H, fill: 'url(#vignette)' });
+el('rect', { width: W, height: H, filter: 'url(#grain)' });
+
+// mod name
+const tx = L.text, g = el('g', { 'text-anchor': 'middle' });
+el('text', { class: 'small', x: tx.x, y: tx.labelY, 'font-size': tx.label, fill: '#9aa3ff', text: 'SKSE PLUGIN · DISCORD RICH PRESENCE' }, g);
+el('text', { class: 'title', x: tx.x, y: tx.nameY[0], 'font-size': tx.name, fill: '#f4f5ff', text: 'DRAGONBORN' }, g);
+el('text', { class: 'title', x: tx.x, y: tx.nameY[1], 'font-size': tx.name, fill: '#f4f5ff', text: 'PRESENCE' }, g);
+el('rect', { x: tx.x - tx.lineW, y: tx.lineY, width: tx.lineW * 2, height: 1.5, fill: 'url(#rule)' }, g);
+el('text', { class: 'sub', x: tx.x, y: tx.subY, 'font-size': tx.sub, fill: '#d4d8ff', text: 'Your journey, live in Discord.' }, g);
+</script>
+</body></html>
