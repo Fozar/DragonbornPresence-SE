@@ -1,0 +1,103 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<!-- Discord Rich Presence icons. presence.html#<key> = one 512x512 icon, #sheet = overview, #list = keys. See ../README.md -->
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@600&display=block" rel="stylesheet">
+<style>
+  html, body { margin: 0; background: #111214; font-family: 'Noto Sans', 'Segoe UI', sans-serif; color: #b5bac1; }
+  svg { display: block; }
+  .glyph { fill: var(--fg); }
+  .glyph .d { fill: var(--bg); }
+  .glyph .ws { fill: none; stroke: var(--fg); }
+  .glyph .ds { fill: none; stroke: var(--bg); }
+  .glyph .outline > * > *, .glyph .outline > * { stroke: var(--bg); stroke-width: 2.5; paint-order: stroke; }
+  #sheet { padding: 20px; width: 1560px; }
+  h3 { color: #f2f3f5; margin: 6px 0 12px; font-size: 15px; letter-spacing: .06em; }
+  .grid { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 22px; }
+  .cell { width: 104px; text-align: center; font-size: 11px; }
+  .cell svg { margin: 0 auto 4px; border-radius: 12px; }
+  .cell.small svg { border-radius: 50%; }
+</style></head>
+<body><div id="out"></div>
+<script src="glyphs.js"></script>
+<script src="achievements.js"></script>
+<script src="drawn.js"></script>
+<script>
+// key -> glyph. Keys are the PNG names under assets/icons/ and are referenced from the plugin's
+// URLs, so never rename or remove one once released — only add.
+const LARGE = {
+  // hold capitals: the jarl's emblem from the map
+  whiterun: 'WhiterunCapitol', solitude: 'SolitudeCapitol', windhelm: 'WindhelmCapitol',
+  markarth: 'MarkarthCapitol', riften: 'RiftenCapitol', falkreath: 'FalkreathCapitol',
+  morthal: 'MorthalCapitol', dawnstar: 'DawnstarCapitol', winterhold: 'WinterholdCapitol',
+  // map marker types
+  city: 'City', town: 'Town', settlement: 'Settlement', cave: 'Cave', camp: 'Camp', fort: 'Fort',
+  nordic_ruin: 'NordicRuin', dwemer_ruin: 'Dwemer', shipwreck: 'Shipwreck', grove: 'Grove',
+  landmark: 'Landmark', dragon_lair: 'Dragonlair', farm: 'Farm', wood_mill: 'WoodMill', mine: 'Mine',
+  imperial_camp: 'ImperialCamp', stormcloak_camp: 'StormcloakCamp', doomstone: 'Doomstone',
+  wheat_mill: 'WheatMill', smelter: 'Smelter', stable: 'Stable', imperial_tower: 'ImperialTower',
+  clearing: 'Clearing', pass: 'Pass', altar: 'Altar', rock: 'Rock', lighthouse: 'Lighthouse',
+  orc_stronghold: 'OrcStronghold', giant_camp: 'GiantCamp', shack: 'Shack', nordic_tower: 'NordicTower',
+  nordic_dwelling: 'NordicDwelling', docks: 'Docks', shrine: 'Shrine',
+  raven_rock: 'DLC02RavenRock', telvanni_tower: 'DLC02TelvanniTower', miraak_temple: 'DLC02MiraakTemple',
+  all_maker_stone: 'DLC02StandingStones', castle_karstaag: 'DLC02CastleKarstaag',
+  // worlds and interiors
+  skyrim: 'SkyrimLogo', solstheim: 'SolstheimExplorer', sovngarde: 'Sovngarde', blackreach: 'Blackreach',
+  soul_cairn: 'SoulCairn', apocrypha: 'Apocrypha', forgotten_vale: 'Shrine', inn: 'Inn',
+};
+const SMALL = {
+  combat: 'Combat', dialogue: 'Dialogue', smithing: 'Smithing', brewing: 'Brewing', enchanting: 'Enchanting',
+  crafting: 'Crafting', reading: 'Reading', trading: 'Trading', pickpocketing: 'Pickpocketing',
+  lockpicking: 'Lockpicking', training: 'Training', waiting: 'Waiting', sleeping: 'Sleeping', dead: 'Dead',
+  sneaking: 'SneakEye', swimming: 'Swimming', riding: 'Stable',
+};
+
+const NS = 'http://www.w3.org/2000/svg';
+const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 2147483646, 7) + 1;
+
+// Night sky + mountain ridges, same look as the mod cover (../art.html).
+function background(s, key, id) {
+  let seed = hash(key);
+  const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  let out = `<defs>
+    <linearGradient id="${id}sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#07081a"/><stop offset=".45" stop-color="#1a1e52"/><stop offset=".72" stop-color="#4650c4"/><stop offset="1" stop-color="#2a2f78"/></linearGradient>
+    <radialGradient id="${id}glow" cx=".5" cy=".46" r=".55"><stop offset="0" stop-color="#5865f2" stop-opacity=".55"/><stop offset="1" stop-color="#5865f2" stop-opacity="0"/></radialGradient>
+    <radialGradient id="${id}vig" cx=".5" cy=".5" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient>
+    <filter id="${id}sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="${s * .012}" stdDeviation="${s * .02}" flood-color="#05061a" flood-opacity=".8"/><feDropShadow dx="0" dy="0" stdDeviation="${s * .03}" flood-color="#8b95ff" flood-opacity=".55"/></filter>
+  </defs><rect width="${s}" height="${s}" fill="url(#${id}sky)"/>`;
+  for (let i = 0; i < 40; i++)
+    out += `<circle cx="${rnd() * s}" cy="${rnd() * s * .55}" r="${(.4 + rnd() * 1.1) * s / 256}" fill="#e6e9ff" opacity="${(.2 + rnd() * .5).toFixed(2)}"/>`;
+  const ridge = (base, amp, n, color) => {
+    let d = `M0 ${s}`;
+    for (let k = 0; k <= n; k++) d += ` L${k * s / n} ${base - amp * (.3 + .7 * rnd())}`;
+    out += `<path d="${d} L${s} ${s}Z" fill="${color}"/>`;
+  };
+  ridge(s * .70, s * .20, 6, '#232867'); ridge(s * .80, s * .12, 9, '#161a47'); ridge(s * .92, s * .07, 12, '#0d0f2b');
+  return out + `<rect width="${s}" height="${s}" fill="url(#${id}glow)"/><rect width="${s}" height="${s}" fill="url(#${id}vig)"/>`;
+}
+
+let uid = 0;
+function icon(key, s) {
+  const small = key in SMALL, name = small ? SMALL[key] : LARGE[key];
+  const game = GAME_GLYPHS[name] || ACH_GLYPHS[name], id = 'i' + uid++;
+  const g = game || { w: 100, h: 100, svg: DRAWN_GLYPHS[name] };
+  // game markers are tall and thin; drawn glyphs fill their 100x100 box
+  const frac = small ? (game ? .66 : .58) : (game ? .62 : .6);
+  const k = s * frac / Math.max(g.w, g.h);
+  return `<svg xmlns="${NS}" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${background(s, key, id)}
+    <g filter="url(#${id}sh)"><!-- filter outside the scale, or the blur radius gets scaled too -->
+      <g class="glyph" style="--fg:#fff;--bg:#1a1e52"
+         transform="translate(${s / 2} ${s / 2 - s * .02}) scale(${k}) translate(${-g.w / 2} ${-g.h / 2})">${g.svg}</g></g></svg>`;
+}
+
+const out = document.getElementById('out'), mode = decodeURIComponent(location.hash.slice(1));
+if (mode === 'list') {
+  out.innerHTML = `<pre id="keys">${[...Object.keys(LARGE), ...Object.keys(SMALL)].join('\n')}</pre>`;
+} else if (mode in LARGE || mode in SMALL) {
+  out.innerHTML = icon(mode, 512);
+} else {
+  const cells = (keys, cls) => keys.map((k) => `<div class="cell ${cls}">${icon(k, 96)}${k}</div>`).join('');
+  out.id = 'sheet';
+  out.innerHTML = `<h3>LARGE — location (${Object.keys(LARGE).length})</h3><div class="grid">${cells(Object.keys(LARGE), '')}</div>
+    <h3>SMALL — activity (${Object.keys(SMALL).length})</h3><div class="grid">${cells(Object.keys(SMALL), 'small')}</div>`;
+}
+</script></body></html>
