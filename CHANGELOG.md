@@ -2,9 +2,13 @@
 
 ## 2.7.0 — 2026-10-07
 
-- **Location and activity icons** — the big picture now shows where you are: the hold's emblem in its capital (Whiterun's horse, Solitude's wolf, …), the location type everywhere else (cave, Nordic ruin, Dwemer ruin, fort, camp, mine, dragon lair, giant camp, shipwreck, lighthouse… — 40+ kinds), an inn when you're in one, and its own picture for Sovngarde, Blackreach, the Soul Cairn, Apocrypha, the Forgotten Vale and Solstheim. The emblems and location symbols are the game's own map markers. A small icon in the corner shows what you're doing: combat, dialogue, smithing, brewing, enchanting, crafting, reading, trading, pickpocketing, lockpicking, training, waiting, sleeping, sneaking, swimming, riding, death. Hovering the pictures shows the location name and the activity.
-- The type comes from the map marker of your location (or its parent), so it is right inside interiors too and works for mod-added locations that have a marker or standard location keywords.
-- Toggle: `show_images` (off = the plain Skyrim logo as before). `icon_url` points the plugin to your own icon set (a folder of `<key>.png` files reachable over https).
+**Location and activity icons.** The big picture now shows where you are: the hold's emblem in its capital (Whiterun's horse, Solitude's wolf, …), the location type everywhere else (cave, Nordic ruin, Dwemer ruin, fort, camp, mine, dragon lair, giant camp, shipwreck, lighthouse and more, 40+ kinds), an inn when you're in one, and its own picture for Sovngarde, Blackreach, the Soul Cairn, Apocrypha, the Forgotten Vale and Solstheim. The emblems and location symbols are the game's own map markers.
+
+A small icon in the corner shows what you're doing: combat, dialogue, smithing, brewing, enchanting, crafting, reading, trading, pickpocketing, lockpicking, training, waiting, sleeping, sneaking, swimming, riding, death. Hovering the pictures shows the location name and the activity.
+
+The location type is taken from the map marker of your location or its parent, so it is right inside interiors too and works for mod-added locations that have a map marker or standard location keywords.
+
+New config options: `show_images` (turn it off to get the plain Skyrim logo as before) and `icon_url` (point the plugin to your own icon set, a folder of `<key>.png` files reachable over https).
 
 ## 2.6.0 — 2026-07-05
 
