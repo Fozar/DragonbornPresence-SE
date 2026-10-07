@@ -24,9 +24,11 @@ const DRAWN_GLYPHS = {
     <path class="d" d="M48 28v50h4V28Z"/><path class="ds" stroke-width="3" stroke-linecap="round" d="M20 36h20M20 46h20M20 56h16M60 36h20M60 46h20M60 56h16"/>`,
   Trading: `<g class="outline"><ellipse cx="38" cy="74" rx="26" ry="10"/><ellipse cx="38" cy="64" rx="26" ry="10"/><ellipse cx="38" cy="54" rx="26" ry="10"/>
     <circle cx="68" cy="36" r="22"/></g><circle class="d" cx="68" cy="36" r="15"/><circle cx="68" cy="36" r="11"/>`,
-  Pickpocketing: `<path d="M34 30 C26 40 14 52 14 66 C14 82 30 90 50 90 C70 90 86 82 86 66 C86 52 74 40 66 30Z"/>
-    <path d="M32 30 L36 14 L44 22 L50 10 L56 22 L64 14 L68 30Z"/><rect class="d" x="32" y="28" width="36" height="6" rx="3"/>
-    <path class="d" d="M50 48 c-8 0-12 4-12 9 0 11 22 6 22 16 0 5-4 9-10 9 M50 44v6M50 82v6" style="fill:none;stroke:var(--bg);stroke-width:5;stroke-linecap:round"/>`,
+  // Coin purse: gathered neck, drawstring with a dangling tie, two folds.
+  Pickpocketing: `<path d="M38 40 C22 50 14 62 14 73 C14 87 30 93 50 93 C70 93 86 87 86 73 C86 62 78 50 62 40Z"/>
+    <path d="M37 40 C35 33 30 26 24 21 C33 21 39 25 43 29 C44 22 47 17 50 12 C53 17 56 22 57 29 C61 25 67 21 76 21 C70 26 65 33 63 40Z"/>
+    <rect class="d" x="34" y="37" width="32" height="7" rx="3.5"/>
+    <path class="ds" stroke-width="3.5" stroke-linecap="round" d="M37 56 C31 64 31 76 36 84 M63 62 C68 68 69 76 65 84"/>`,
   Lockpicking: `<path d="M28 46V34a22 22 0 0 1 44 0v12h-10V34a12 12 0 0 0-24 0v12Z"/><rect x="20" y="46" width="60" height="42" rx="7"/>
     <circle class="d" cx="50" cy="63" r="7"/><path class="d" d="M46 66h8l3 13H43Z"/>`,
   Training: `<path d="M50 10 L86 46 L74 58 L50 34 L26 58 L14 46Z"/><path d="M50 42 L86 78 L74 90 L50 66 L26 90 L14 78Z"/>`,

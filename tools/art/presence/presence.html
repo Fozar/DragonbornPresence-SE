@@ -55,7 +55,7 @@ const NS = 'http://www.w3.org/2000/svg';
 const hash = (s) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 2147483646, 7) + 1;
 
 // Night sky + mountain ridges, same look as the mod cover (../art.html).
-function background(s, key, id) {
+function background(s, key, id, outline) {
   let seed = hash(key);
   const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
   let out = `<defs>
@@ -64,7 +64,7 @@ function background(s, key, id) {
     <radialGradient id="${id}vig" cx=".5" cy=".5" r=".75"><stop offset=".6" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".55"/></radialGradient>
     <filter id="${id}sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="${s * .012}" stdDeviation="${s * .02}" flood-color="#05061a" flood-opacity=".8"/><feDropShadow dx="0" dy="0" stdDeviation="${s * .03}" flood-color="#8b95ff" flood-opacity=".55"/></filter>
     <!-- dark outline for drawn glyphs; the game's markers carry their own -->
-    <filter id="${id}ol" x="-10%" y="-10%" width="120%" height="120%"><feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="m"/>
+    <filter id="${id}ol" x="-10%" y="-10%" width="120%" height="120%"><feMorphology in="SourceAlpha" operator="dilate" radius="${outline}" result="m"/>
       <feFlood flood-color="#1a1e52"/><feComposite in2="m" operator="in"/><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs><rect width="${s}" height="${s}" fill="url(#${id}sky)"/>`;
   for (let i = 0; i < 40; i++)
@@ -84,9 +84,11 @@ function icon(key, s) {
   const game = GAME_GLYPHS[name] || ACH_GLYPHS[name], id = 'i' + uid++;
   const g = game || { w: 100, h: 100, svg: DRAWN_GLYPHS[name] };
   // game markers are tall and thin; drawn glyphs fill their 100x100 box
-  const frac = small ? (game ? .66 : .58) : (game ? .62 : .6);
+  const gameFrac = small ? .66 : .62, frac = game ? gameFrac : (small ? .58 : .6);
   const k = s * frac / Math.max(g.w, g.h);
-  return `<svg xmlns="${NS}" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${background(s, key, id)}
+  // The game's markers are outlined at ~4.7% of their height (measured); match that on screen.
+  const outline = .047 * gameFrac * s / k;
+  return `<svg xmlns="${NS}" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${background(s, key, id, outline)}
     <g filter="url(#${id}sh)"><!-- filter outside the scale, or the blur radius gets scaled too -->
       <g class="glyph" style="--fg:#fff;--bg:#1a1e52"${game ? '' : ` filter="url(#${id}ol)"`}
          transform="translate(${s / 2} ${s / 2 - s * .02}) scale(${k}) translate(${-g.w / 2} ${-g.h / 2})">${g.svg}</g></g></svg>`;
