@@ -20,8 +20,13 @@ namespace DragonbornPresence {
 namespace {
 
 constexpr discord::ClientId kAppId          = 565627104608256015LL;
-constexpr const char*       kLargeImageKey  = "skyrim_logo";
+constexpr const char*       kLargeImageKey  = "skyrim_logo";  // uploaded to the app's Rich Presence assets
 constexpr const char*       kLargeImageText = "The Elder Scrolls V: Skyrim";
+// Discord accepts an https URL as the asset key. Icons are assets/icons/<key>.png in the
+// repo; released versions link these paths, so keys are never renamed or removed.
+// Discord caches by URL: when an image changes, make IconUrl() append a "?v=N" query for it.
+constexpr const char*       kIconBaseUrl    = "https://raw.githubusercontent.com/Fozar/DragonbornPresence-SE/master/assets/icons/";
+constexpr const char*       kIconDefault    = "skyrim";
 constexpr const char*       kSeparator      = " \xC2\xB7 ";  // · (U+00B7)
 constexpr std::size_t       kMaxFieldBytes  = 127;  // discord::Activity copies into char[128]
 constexpr auto              kMinSendInterval = std::chrono::seconds(4);  // Discord: 5 updates / 20 s
@@ -64,7 +69,9 @@ std::string g_lastPosition;     // last non-empty location (engine nulls during 
 std::string g_combatTarget;     // "In combat with X" while player is in combat
 std::string g_dialogueSpeaker;  // "Talking to X" while Dialogue Menu is open
 std::string g_craftingActivity; // "Smithing"/"Brewing"/… while Crafting Menu is open
+const char* g_craftingIcon = nullptr;
 std::string g_menuActivity;     // reading/trading/pickpocketing/lockpicking/training/waiting/sleeping
+const char* g_menuIcon = nullptr;  // icon key of g_menuActivity (same name as its locale key)
 std::string g_pollSignature;    // movement|time-weather|bounty snapshot for change detection
 bool        g_isDead = false;   // player died (cleared on load/new game)
 
@@ -81,6 +88,8 @@ struct Config {
     bool show_weather     = true;   // rain/snow (exterior only)
     bool show_bounty      = true;   // total crime gold
     bool show_death       = true;
+    bool show_images      = true;   // location / activity icons
+    std::string icon_url  = kIconBaseUrl;  // folder with <key>.png, for custom icon sets
 } g_config;
 
 static std::string SafeStr(const char* s) {
@@ -156,6 +165,169 @@ static std::string BuildPosition(RE::PlayerCharacter* player) {
     return cellName;
 }
 
+// ---- Location icon ----------------------------------------------------------
+// Picks the large image (a key of assets/icons/) for where the player is.
+
+// Map marker type -> icon. Hold capitals and the jarls' castles share the hold's emblem.
+static const char* MarkerIcon(RE::MARKER_TYPE type) {
+    using M = RE::MARKER_TYPE;
+    switch (type) {
+    case M::kCity:            return "city";
+    case M::kTown:            return "town";
+    case M::kSettlement:      return "settlement";
+    case M::kCave:            return "cave";
+    case M::kCamp:            return "camp";
+    case M::kFort:            return "fort";
+    case M::kNordicRuin:      return "nordic_ruin";
+    case M::kDwemerRuin:      return "dwemer_ruin";
+    case M::kShipwreck:       return "shipwreck";
+    case M::kGrove:           return "grove";
+    case M::kLandmark:        return "landmark";
+    case M::kDragonLair:      return "dragon_lair";
+    case M::kFarm:            return "farm";
+    case M::kWoodMill:        return "wood_mill";
+    case M::kMine:            return "mine";
+    case M::kImperialCamp:    return "imperial_camp";
+    case M::kStormcloakCamp:  return "stormcloak_camp";
+    case M::kDoomstone:       return "doomstone";
+    case M::kWheatMill:       return "wheat_mill";
+    case M::kSmelter:         return "smelter";
+    case M::kStable:          return "stable";
+    case M::kImperialTower:   return "imperial_tower";
+    case M::kClearing:        return "clearing";
+    case M::kPass:            return "pass";
+    case M::kAltar:           return "altar";
+    case M::kRock:            return "rock";
+    case M::kLighthouse:      return "lighthouse";
+    case M::kOrcStronghold:   return "orc_stronghold";
+    case M::kGiantCamp:       return "giant_camp";
+    case M::kShack:           return "shack";
+    case M::kNordicTower:     return "nordic_tower";
+    case M::kNordicDwelling:  return "nordic_dwelling";
+    case M::kDocks:           return "docks";
+    case M::kShrine:          return "shrine";
+    case M::kRiftenCastle:     case M::kRiftenCapitol:     return "riften";
+    case M::kWindhelmCastle:   case M::kWindhelmCapitol:   return "windhelm";
+    case M::kWhiterunCastle:   case M::kWhiterunCapitol:   return "whiterun";
+    case M::kSolitudeCastle:   case M::kSolitudeCapitol:   return "solitude";
+    case M::kMarkarthCastle:   case M::kMarkarthCapitol:   return "markarth";
+    case M::kWinterholdCastle: case M::kWinterholdCapitol: return "winterhold";
+    case M::kMorthalCastle:    case M::kMorthalCapitol:    return "morthal";
+    case M::kFalkreathCastle:  case M::kFalkreathCapitol:  return "falkreath";
+    case M::kDawnstarCastle:   case M::kDawnstarCapitol:   return "dawnstar";
+    case M::kDLC02MiraakTemple:   return "miraak_temple";
+    case M::kDLC02RavenRock:      return "raven_rock";
+    case M::kDLC02StandingStone:  return "all_maker_stone";
+    case M::kDLC02TelvanniTower:  return "telvanni_tower";
+    case M::kDLC02ToSkyrim:
+    case M::kDLC02ToSolstheim:    return "docks";
+    case M::kDLC02CastleKarstaag: return "castle_karstaag";
+    default:                      return nullptr;
+    }
+}
+
+// Worlds without a meaningful marker, and the walled cities' own worldspaces.
+static const char* WorldIcon(const RE::TESWorldSpace* ws) {
+    static constexpr std::pair<std::string_view, const char*> kWorlds[] = {
+        {"Sovngarde",          "sovngarde"},
+        {"Blackreach",         "blackreach"},
+        {"DLC01SoulCairn",     "soul_cairn"},
+        {"DLC01Boneyard",      "soul_cairn"},
+        {"DLC01FalmerValley",  "forgotten_vale"},
+        {"DLC2ApocryphaWorld", "apocrypha"},
+        {"WhiterunWorld",             "whiterun"},
+        {"WhiterunDragonsreachWorld", "whiterun"},
+        {"SolitudeWorld",             "solitude"},
+        {"BluePalaceWingWorld",       "solitude"},
+        {"WindhelmWorld",             "windhelm"},
+        {"WindhelmPitWorldspace",     "windhelm"},
+        {"RiftenWorld",               "riften"},
+        {"MarkarthWorld",             "markarth"},
+    };
+    if (!ws) return nullptr;
+    const std::string_view id = ws->editorID.c_str();
+    for (const auto& [editorID, icon] : kWorlds)
+        if (id == editorID) return icon;
+    return nullptr;
+}
+
+// Fallback for locations without a map marker of their own (mostly mod-added).
+static const char* KeywordIcon(RE::BGSLocation* loc) {
+    static constexpr std::pair<const char*, const char*> kKeywords[] = {
+        {"LocTypeCity",              "city"},
+        {"LocTypeTown",              "town"},
+        {"LocTypeSettlement",        "settlement"},
+        {"LocTypeDraugrCrypt",       "nordic_ruin"},
+        {"LocTypeDragonPriestLair",  "nordic_ruin"},
+        {"LocTypeDwarvenAutomatons", "dwemer_ruin"},
+        {"LocTypeMilitaryFort",      "fort"},
+        {"LocTypeMilitaryCamp",      "imperial_camp"},
+        {"LocTypeBanditCamp",        "camp"},
+        {"LocTypeForswornCamp",      "camp"},
+        {"LocTypeGiantCamp",         "giant_camp"},
+        {"LocTypeOrcStronghold",     "orc_stronghold"},
+        {"LocTypeDragonLair",        "dragon_lair"},
+        {"LocTypeMine",              "mine"},
+        {"LocTypeFarm",              "farm"},
+        {"LocTypeLumberMill",        "wood_mill"},
+        {"LocTypeShipwreck",         "shipwreck"},
+        {"LocTypeShip",              "docks"},
+        {"LocTypeTemple",            "shrine"},
+        {"LocTypeSprigganGrove",     "grove"},
+        {"LocTypeFalmerHive",        "cave"},
+        {"LocTypeAnimalDen",         "cave"},
+        {"LocTypeHagravenNest",      "cave"},
+        {"LocTypeVampireLair",       "cave"},
+        {"LocTypeWarlockLair",       "cave"},
+        {"LocTypeWerewolfLair",      "cave"},
+        {"LocTypeWerebearLair",      "cave"},
+        {"LocTypeDungeon",           "cave"},
+        {"LocTypeHabitation",        "settlement"},
+    };
+    for (const auto& [keyword, icon] : kKeywords)
+        if (loc->HasKeywordString(keyword)) return icon;
+    return nullptr;
+}
+
+static RE::MapMarkerData* LocationMapMarker(RE::BGSLocation* loc, RE::TESWorldSpace** ws = nullptr) {
+    auto marker = loc->worldLocMarker.get();
+    if (!marker) return nullptr;
+    if (ws) *ws = marker->GetWorldspace();
+    auto* extra = marker->extraList.GetByType<RE::ExtraMapMarker>();
+    return extra ? extra->mapData : nullptr;
+}
+
+static const char* BuildLocationIcon(RE::PlayerCharacter* player) {
+    auto* loc = player->GetCurrentLocation();
+    auto* ws  = player->GetWorldspace();
+
+    // Special worlds first. Interiors have no worldspace — take it from a location's marker.
+    if (auto* icon = WorldIcon(ws); icon) return icon;
+    if (!ws) {
+        for (auto* l = loc; l; l = l->parentLoc) {
+            RE::TESWorldSpace* markerWs = nullptr;
+            LocationMapMarker(l, &markerWs);
+            if (auto* icon = WorldIcon(markerWs); icon) return icon;
+            if (markerWs) break;  // the nearest marked location decides
+        }
+    }
+    // Inns have no marker; without this they'd show their city's emblem.
+    if (loc && loc->HasKeywordString("LocTypeInn")) return "inn";
+    for (auto* l = loc; l; l = l->parentLoc)
+        if (auto* data = LocationMapMarker(l); data)
+            if (auto* icon = MarkerIcon(data->type.get()); icon) return icon;
+    for (auto* l = loc; l; l = l->parentLoc)
+        if (auto* icon = KeywordIcon(l); icon) return icon;
+    if (ws && std::string_view(ws->editorID.c_str()) == "DLC2SolstheimWorld") return "solstheim";
+    return kIconDefault;
+}
+
+static std::string IconUrl(const char* key) {
+    if (!g_config.show_images || !key) return "";
+    std::string url = g_config.icon_url + key + ".png";
+    return url.size() <= kMaxFieldBytes ? url : "";  // a cut URL would just show a broken image
+}
+
 static std::string BuildActiveQuest(RE::PlayerCharacter* player) {
     if (REL::Module::IsVR()) return "";  // objectives not mapped for VR
 
@@ -185,22 +357,26 @@ static std::string BuildPlayerInfo(RE::PlayerCharacter* player) {
     return name + " - " + raceName + " (" + std::to_string(player->GetLevel()) + ")";
 }
 
+struct Activity {
+    std::string text;
+    const char* icon = nullptr;  // small image key
+};
+
 // Sneaking / swimming / riding — polled, no dedicated engine events.
-static std::string BuildMovement(RE::PlayerCharacter* player) {
-    if (!g_config.show_movement) return "";
+static Activity BuildMovement(RE::PlayerCharacter* player) {
+    if (!g_config.show_movement) return {};
     if (auto* st = player->AsActorState(); st && st->IsSwimming())
-        return Locale("swimming");
+        return {Locale("swimming"), "swimming"};
     if (player->IsSneaking())
-        return Locale("sneaking");
+        return {Locale("sneaking"), "sneaking"};
     if (player->IsOnMount()) {
         RE::NiPointer<RE::Actor> mount;
         std::string name;
         if (player->GetMount(mount) && mount)
             name = SafeStr(mount->GetName());
-        return name.empty() ? Locale("riding_no_name")
-                            : FormatWithName(Locale("riding"), name);
+        return {name.empty() ? Locale("riding_no_name") : FormatWithName(Locale("riding"), name), "riding"};
     }
-    return "";
+    return {};
 }
 
 // In-game clock (floored to 30 minutes so presence doesn't churn) + rain/snow marker.
@@ -273,7 +449,11 @@ static bool UpdateCombatTarget(RE::PlayerCharacter* player) {
 // drop the final state. FlushPresence() runs every 100 ms and sends the latest
 // queued update once the interval has passed.
 
-struct Presence { std::string state, details; };
+struct Presence {
+    std::string state, details;
+    std::string largeImage, largeText, smallImage, smallText;  // images are URLs
+    bool operator==(const Presence&) const = default;
+};
 std::optional<Presence>               g_pendingPresence;
 Presence                              g_sentPresence;
 std::chrono::steady_clock::time_point g_lastSend{};
@@ -291,8 +471,14 @@ static void FlushPresence() {
     if (!g_sentPresence.state.empty())   activity.SetState(g_sentPresence.state.c_str());
     if (!g_sentPresence.details.empty()) activity.SetDetails(g_sentPresence.details.c_str());
     activity.GetTimestamps().SetStart(g_startTime);
-    activity.GetAssets().SetLargeImage(kLargeImageKey);
-    activity.GetAssets().SetLargeText(kLargeImageText);
+    auto& assets = activity.GetAssets();
+    // Without icons (show_images=false) fall back to the logo uploaded to the Discord app.
+    assets.SetLargeImage(g_sentPresence.largeImage.empty() ? kLargeImageKey : g_sentPresence.largeImage.c_str());
+    assets.SetLargeText(g_sentPresence.largeText.empty() ? kLargeImageText : g_sentPresence.largeText.c_str());
+    if (!g_sentPresence.smallImage.empty()) {
+        assets.SetSmallImage(g_sentPresence.smallImage.c_str());
+        assets.SetSmallText(g_sentPresence.smallText.c_str());
+    }
 
     g_core->ActivityManager().UpdateActivity(activity, [](discord::Result r) {
         if (r != discord::Result::Ok) {
@@ -304,16 +490,23 @@ static void FlushPresence() {
     });
 }
 
-void SendPresence(std::string state, std::string details) {
+void SendPresence(Presence p) {
     if (!g_core) return;
-    TruncateUtf8(state, kMaxFieldBytes);
-    TruncateUtf8(details, kMaxFieldBytes);
-    if (state == g_sentPresence.state && details == g_sentPresence.details) {
-        g_pendingPresence.reset();  // a queued update would only overwrite this with stale text
+    TruncateUtf8(p.state, kMaxFieldBytes);
+    TruncateUtf8(p.details, kMaxFieldBytes);
+    TruncateUtf8(p.largeText, kMaxFieldBytes);
+    TruncateUtf8(p.smallText, kMaxFieldBytes);
+    if (p == g_sentPresence) {
+        g_pendingPresence.reset();  // a queued update would only overwrite this with stale data
         return;
     }
-    g_pendingPresence = Presence{std::move(state), std::move(details)};
+    g_pendingPresence = std::move(p);
     FlushPresence();
+}
+
+// Main menu / character creation: one line of text and the Skyrim logo.
+static void SendMenuPresence(const std::string& state) {
+    SendPresence({.state = state, .largeImage = IconUrl(kIconDefault)});
 }
 
 void RefreshPosition(const char* trigger = nullptr) {
@@ -329,29 +522,29 @@ void RefreshPosition(const char* trigger = nullptr) {
     const bool fallback = g_config.show_location && position.empty() && !g_lastPosition.empty();
     const std::string& display = fallback ? g_lastPosition : position;
 
-    std::string movement    = BuildMovement(player);
+    Activity    movement    = BuildMovement(player);
     std::string timeWeather = BuildTimeWeather(player);
     int         bounty      = GetTotalBounty();
     // Snapshot for the poller: refresh only fires when this composite changes.
-    g_pollSignature = movement + '\x1F' + timeWeather + '\x1F' + std::to_string(bounty);
+    g_pollSignature = movement.text + '\x1F' + timeWeather + '\x1F' + std::to_string(bounty);
 
-    std::string suffix;
+    Activity activity;  // text goes after the location; icon is the small image
     if (g_isDead && g_config.show_death)
-        suffix = Locale("dead");
+        activity = {Locale("dead"), "dead"};
     else if (!g_dialogueSpeaker.empty() && g_config.show_dialogue)
-        suffix = g_dialogueSpeaker;
+        activity = {g_dialogueSpeaker, "dialogue"};
     else if (!g_combatTarget.empty() && g_config.show_combat)
-        suffix = g_combatTarget;
+        activity = {g_combatTarget, "combat"};
     else if (!g_craftingActivity.empty() && g_config.show_crafting)
-        suffix = g_craftingActivity;
+        activity = {g_craftingActivity, g_craftingIcon};
     else if (!g_menuActivity.empty() && g_config.show_menus)
-        suffix = g_menuActivity;
-    else if (!movement.empty())
-        suffix = movement;
+        activity = {g_menuActivity, g_menuIcon};
+    else if (!movement.text.empty())
+        activity = std::move(movement);
     else if (g_config.show_quest)
-        suffix = BuildActiveQuest(player);
+        activity = {BuildActiveQuest(player), nullptr};
 
-    std::string state = Join(display, suffix);
+    std::string state = Join(display, activity.text);
     // Time/weather is the least important part — drop it rather than truncate the rest.
     if (std::string full = Join(state, timeWeather); full.size() <= kMaxFieldBytes || state.empty())
         state = std::move(full);
@@ -360,10 +553,19 @@ void RefreshPosition(const char* trigger = nullptr) {
     if (bounty > 0)
         details = Join(details, FormatPlaceholder(Locale("wanted"), "{gold}", std::to_string(bounty)));
 
-    SKSE::log::info("[{}] player='{}' location='{}' suffix='{}' extra='{}'{}",
-        trigger ? trigger : "refresh", details, display, suffix, timeWeather,
-        fallback ? " [fallback]" : "");
-    SendPresence(std::move(state), std::move(details));
+    const char* locationIcon = g_config.show_location ? BuildLocationIcon(player) : kIconDefault;
+    SKSE::log::info("[{}] player='{}' location='{}' suffix='{}' extra='{}' icons={}/{}{}",
+        trigger ? trigger : "refresh", details, display, activity.text, timeWeather,
+        locationIcon, activity.icon ? activity.icon : "-", fallback ? " [fallback]" : "");
+
+    Presence p{.state = std::move(state), .details = std::move(details)};
+    p.largeImage = IconUrl(locationIcon);
+    p.largeText  = display;
+    if (activity.icon) {
+        p.smallImage = IconUrl(activity.icon);
+        p.smallText  = activity.text;
+    }
+    SendPresence(std::move(p));
 }
 
 void DeferredRefresh(int ticks) {
@@ -380,11 +582,11 @@ void TransitionTo(State next) {
     switch (next) {
     case State::MainMenu:
         SKSE::log::info("State -> MainMenu");
-        SendPresence(Locale("main_menu"), {});
+        SendMenuPresence(Locale("main_menu"));
         break;
     case State::EditingCharacter:
         SKSE::log::info("State -> EditingCharacter");
-        SendPresence(Locale("editing_character"), {});
+        SendMenuPresence(Locale("editing_character"));
         break;
     case State::Playing:
         SKSE::log::info("State -> Playing");
@@ -402,6 +604,7 @@ void TransitionTo(State next) {
         g_dialogueSpeaker.clear();
         g_craftingActivity.clear();
         g_menuActivity.clear();
+        g_craftingIcon = g_menuIcon = nullptr;
         g_lastPosition.clear();  // may belong to another save after this load
         g_isDead = false;
         break;
@@ -447,6 +650,7 @@ static void OnCraftingMenu(bool opening) {
         SKSE::GetTaskInterface()->AddTask([]() {
             if (!g_config.show_crafting || g_state != State::Playing) return;
             std::string activity = Locale("crafting_smithing");
+            const char* icon     = "smithing";
             if (auto* ui = RE::UI::GetSingleton()) {
                 if (auto gptr = ui->GetMenu<RE::CraftingMenu>()) {
                     auto* cm  = static_cast<RE::CraftingMenu*>(gptr.get());
@@ -470,16 +674,18 @@ static void OnCraftingMenu(bool opening) {
                         switch (bench) {
                         case BT::kAlchemy:
                         case BT::kAlchemyExperiment:
-                            activity = Locale("crafting_brewing");    break;
+                            activity = Locale("crafting_brewing");    icon = "brewing";    break;
                         case BT::kEnchanting:
                         case BT::kEnchantingExperiment:
-                            activity = Locale("crafting_enchanting"); break;
+                            activity = Locale("crafting_enchanting"); icon = "enchanting"; break;
                         case BT::kCreateObject:
                             // Forges share kCreateObject with smelters, tanning racks and
                             // cooking pots — only the workbench keyword tells them apart.
                             if (!furn->HasKeywordString("CraftingSmithingForge") &&
-                                !furn->HasKeywordString("CraftingSmithingSkyforge"))
+                                !furn->HasKeywordString("CraftingSmithingSkyforge")) {
                                 activity = Locale("crafting_other");
+                                icon     = "crafting";
+                            }
                             break;
                         default: break;  // kSmithingWeapon, kSmithingArmor
                         }
@@ -488,6 +694,7 @@ static void OnCraftingMenu(bool opening) {
                 }
             }
             g_craftingActivity = activity;
+            g_craftingIcon     = icon;
             SKSE::log::info("Menu: 'Crafting Menu' open -> crafting='{}'", g_craftingActivity);
             RefreshPosition("crafting-open");
         });
@@ -509,6 +716,7 @@ static void OnBookMenu(bool opening) {
                 name = SafeStr(book->GetName());
             if (!name.empty()) {
                 g_menuActivity = FormatWithName(Locale("reading"), name);
+                g_menuIcon     = "reading";
                 RefreshPosition("book-open");
             }
         });
@@ -527,6 +735,7 @@ static void OnBarterMenu(bool opening) {
                 name = SafeStr(ref->GetName());
             if (!name.empty()) {
                 g_menuActivity = FormatWithName(Locale("trading"), name);
+                g_menuIcon     = "trading";
                 RefreshPosition("barter-open");
             }
         });
@@ -550,6 +759,7 @@ static void OnContainerMenu(bool opening) {
                 name = SafeStr(ref->GetName());
             if (!name.empty()) {
                 g_menuActivity = FormatWithName(Locale("pickpocketing"), name);
+                g_menuIcon     = "pickpocketing";
                 RefreshPosition("pickpocket-open");
             }
         });
@@ -559,11 +769,13 @@ static void OnContainerMenu(bool opening) {
 }
 
 // Lockpicking / Training / Sleep-Wait — static text, no target lookup needed.
+// localeKey doubles as the icon key.
 static void OnSimpleActivityMenu(bool opening, const char* localeKey, const char* trigger) {
     if (!g_config.show_menus) return;
     if (opening) {
         if (g_state == State::Playing) {
             g_menuActivity = Locale(localeKey);
+            g_menuIcon     = localeKey;
             RefreshPosition(trigger);
         }
     } else {
@@ -738,6 +950,7 @@ public:
             SKSE::GetTaskInterface()->AddTask([]() {
                 if (!g_config.show_menus || g_state != State::Playing) return;
                 g_menuActivity = Locale("sleeping");
+                g_menuIcon     = "sleeping";
                 RefreshPosition("sleep-start");
             });
         }
@@ -774,7 +987,7 @@ static void PollGameState() {
     if (!player) return;
 
     const bool combatChanged = UpdateCombatTarget(player);
-    std::string sig = BuildMovement(player) + '\x1F' + BuildTimeWeather(player)
+    std::string sig = BuildMovement(player).text + '\x1F' + BuildTimeWeather(player)
                     + '\x1F' + std::to_string(GetTotalBounty());
     if (combatChanged || sig != g_pollSignature)
         RefreshPosition("poll");  // updates g_pollSignature itself
@@ -845,15 +1058,21 @@ void LoadConfig() {
         try_bool("show_weather",     g_config.show_weather);
         try_bool("show_bounty",      g_config.show_bounty);
         try_bool("show_death",       g_config.show_death);
+        try_bool("show_images",      g_config.show_images);
+        if (auto it = j.find("icon_url"); it != j.end() && it->is_string() && !it->get<std::string>().empty()) {
+            g_config.icon_url = it->get<std::string>();
+            if (g_config.icon_url.back() != '/') g_config.icon_url += '/';
+        }
     } catch (const nlohmann::json::exception& e) {
         SKSE::log::error("Failed to parse config JSON: {}", e.what());
     }
     SKSE::log::info("Config: location={} quest={} combat={} dialogue={} crafting={} player_info={} "
-        "menus={} movement={} time={} weather={} bounty={} death={}",
+        "menus={} movement={} time={} weather={} bounty={} death={} images={} icon_url='{}'",
         g_config.show_location, g_config.show_quest, g_config.show_combat,
         g_config.show_dialogue, g_config.show_crafting, g_config.show_player_info,
         g_config.show_menus, g_config.show_movement, g_config.show_time,
-        g_config.show_weather, g_config.show_bounty, g_config.show_death);
+        g_config.show_weather, g_config.show_bounty, g_config.show_death,
+        g_config.show_images, g_config.icon_url);
 }
 
 void SetLocale() {

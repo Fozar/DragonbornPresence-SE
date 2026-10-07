@@ -21,6 +21,7 @@
 [*][b]Movement[/b] — [i]Sneaking[/i], [i]Swimming[/i], or [i]Riding <horse name>[/i] when nothing more important is happening.
 [*][b]Bounty[/b] — if any hold wants your head, the details line shows [i]Wanted: <gold>[/i].
 [*][b]Death[/b] — dying shows [i]Dead[/i] until you reload. Sovngarde awaits.
+[*][b]Icons[/b] — the big picture shows where you are: the hold's emblem in its capital, the location type everywhere else (cave, Nordic ruin, Dwemer ruin, fort, camp, mine, dragon lair…), an inn, or Sovngarde, Blackreach, the Soul Cairn, Apocrypha, Solstheim. The emblems and location symbols are the game's own map markers. A small icon shows what you're doing — fighting, talking, smithing, reading, sneaking, riding and more.
 [*][b]Session timer[/b] — shows how long you've been playing this session.
 [*][b]Menu states[/b] — displays [i]Main menu[/i] while on the title screen and [i]Editing character[/i] during character creation.
 [*][b]Configurable[/b] — every element can be toggled on or off independently in a JSON file.
@@ -72,7 +73,8 @@ No .esp. No plugins to enable. Just drop and play.
     "show_time": true,
     "show_weather": true,
     "show_bounty": true,
-    "show_death": true
+    "show_death": true,
+    "show_images": true
 }[/font]
 
 [font=Tahoma]Set any value to [font=Courier New]false[/font] to hide that element. If the file is missing or a key is absent, the feature defaults to on.[/font]
