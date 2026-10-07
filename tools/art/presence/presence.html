@@ -90,7 +90,7 @@ function icon(key, s) {
   const outline = .047 * gameFrac * s / k;
   return `<svg xmlns="${NS}" width="${s}" height="${s}" viewBox="0 0 ${s} ${s}">${background(s, key, id, outline)}
     <g filter="url(#${id}sh)"><!-- filter outside the scale, or the blur radius gets scaled too -->
-      <g class="glyph" style="--fg:#fff;--bg:#1a1e52"${game ? '' : ` filter="url(#${id}ol)"`}
+      <g class="glyph" style="--fg:#fff;--bg:#1a1e52"${name in GAME_GLYPHS ? '' : ` filter="url(#${id}ol)"`}
          transform="translate(${s / 2} ${s / 2 - s * .02}) scale(${k}) translate(${-g.w / 2} ${-g.h / 2})">${g.svg}</g></g></svg>`;
 }
 
